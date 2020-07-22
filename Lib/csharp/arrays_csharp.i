@@ -57,7 +57,7 @@
 
 %typemap(ctype)   CTYPE INPUT[] "CTYPE*"
 %typemap(cstype)  CTYPE INPUT[] "CSTYPE[]"
-%typemap(imtype, inattributes="[In, MarshalAs(UnmanagedType.LPArray)]") CTYPE INPUT[] "CSTYPE[]"
+%typemap(imtype, inattributes="[global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray)]") CTYPE INPUT[] "CSTYPE[]"
 %typemap(csin)    CTYPE INPUT[] "$csinput"
 
 %typemap(in)      CTYPE INPUT[] "$1 = $input;"
@@ -68,7 +68,7 @@
 
 %typemap(ctype)   CTYPE OUTPUT[] "CTYPE*"
 %typemap(cstype)  CTYPE OUTPUT[] "CSTYPE[]"
-%typemap(imtype, inattributes="[Out, MarshalAs(UnmanagedType.LPArray)]") CTYPE OUTPUT[] "CSTYPE[]"
+%typemap(imtype, inattributes="[global::System.Runtime.InteropServices.Out, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray)]") CTYPE OUTPUT[] "CSTYPE[]"
 %typemap(csin)    CTYPE OUTPUT[] "$csinput"
 
 %typemap(in)      CTYPE OUTPUT[] "$1 = $input;"
@@ -79,7 +79,7 @@
 
 %typemap(ctype)   CTYPE INOUT[] "CTYPE*"
 %typemap(cstype)  CTYPE INOUT[] "CSTYPE[]"
-%typemap(imtype, inattributes="[In, Out, MarshalAs(UnmanagedType.LPArray)]") CTYPE INOUT[] "CSTYPE[]"
+%typemap(imtype, inattributes="[global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.Out, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray)]") CTYPE INOUT[] "CSTYPE[]"
 %typemap(csin)    CTYPE INOUT[] "$csinput"
 
 %typemap(in)      CTYPE INOUT[] "$1 = $input;"
@@ -104,16 +104,57 @@ CSHARP_ARRAYS(unsigned long long, ulong)
 CSHARP_ARRAYS(float, float)
 CSHARP_ARRAYS(double, double)
 
+// By default C# will marshal bools as 4 bytes
+// UnmanagedType.I1 will change this to 1 byte
+// FIXME - When running on mono ArraySubType appears to be ignored and bools will be marshalled as 4-byte
+// https://github.com/mono/mono/issues/15592
+
+// input only arrays
+%typemap(ctype)   bool INPUT[] "bool*"
+%typemap(cstype)  bool INPUT[] "bool[]"
+%typemap(imtype, inattributes="[global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray,ArraySubType=System.Runtime.InteropServices.UnmanagedType.I1)]") bool INPUT[] "bool[]"
+%typemap(csin)    bool INPUT[] "$csinput"
+
+%typemap(in)      bool INPUT[] %{
+$1 = $input;
+%}
+%typemap(freearg) bool INPUT[] ""
+%typemap(argout)  bool INPUT[] ""
+
+// output only arrays
+%typemap(ctype)   bool OUTPUT[] "bool*"
+%typemap(cstype)  bool OUTPUT[] "bool[]"
+%typemap(imtype, inattributes="[global::System.Runtime.InteropServices.Out, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray,ArraySubType=System.Runtime.InteropServices.UnmanagedType.I1)]") bool OUTPUT[] "bool[]"
+%typemap(csin)    bool OUTPUT[] "$csinput"
+
+%typemap(in)      bool OUTPUT[] %{
+$1 = $input;
+%}
+%typemap(freearg) bool OUTPUT[] ""
+%typemap(argout)  bool OUTPUT[] ""
+
+// inout arrays
+%typemap(ctype)   bool INOUT[] "bool*"
+%typemap(cstype)  bool INOUT[] "bool[]"
+%typemap(imtype, inattributes="[global::System.Runtime.InteropServices.In, global::System.Runtime.InteropServices.Out, global::System.Runtime.InteropServices.MarshalAs(global::System.Runtime.InteropServices.UnmanagedType.LPArray,ArraySubType=System.Runtime.InteropServices.UnmanagedType.I1)]") bool INOUT[] "bool[]"
+%typemap(csin)    bool INOUT[] "$csinput"
+
+%typemap(in)      bool INOUT[] %{
+$1 = $input;
+%}
+%typemap(freearg) bool INOUT[] ""
+%typemap(argout)  bool INOUT[] ""
+
 
 %define CSHARP_ARRAYS_FIXED( CTYPE, CSTYPE )
 
 %typemap(ctype)   CTYPE FIXED[] "CTYPE*"
-%typemap(imtype)  CTYPE FIXED[] "IntPtr"
+%typemap(imtype)  CTYPE FIXED[] "global::System.IntPtr"
 %typemap(cstype)  CTYPE FIXED[] "CSTYPE[]"
 %typemap(csin,
            pre=       "    fixed ( CSTYPE* swig_ptrTo_$csinput = $csinput ) {",
            terminator="    }") 
-                  CTYPE FIXED[] "(IntPtr)swig_ptrTo_$csinput"
+                  CTYPE FIXED[] "(global::System.IntPtr)swig_ptrTo_$csinput"
 
 %typemap(in)      CTYPE FIXED[] "$1 = $input;"
 %typemap(freearg) CTYPE FIXED[] ""
@@ -134,4 +175,5 @@ CSHARP_ARRAYS_FIXED(long long, long)
 CSHARP_ARRAYS_FIXED(unsigned long long, ulong)
 CSHARP_ARRAYS_FIXED(float, float)
 CSHARP_ARRAYS_FIXED(double, double)
+CSHARP_ARRAYS_FIXED(bool, bool)
 

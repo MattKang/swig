@@ -1,5 +1,5 @@
 # ===========================================================================
-#      http://www.gnu.org/software/autoconf-archive/ax_path_generic.html
+#     https://www.gnu.org/software/autoconf-archive/ax_path_generic.html
 # ===========================================================================
 #
 # SYNOPSIS
@@ -14,11 +14,11 @@
 #   The script must support `--cflags' and `--libs' args. If MINIMUM-VERSION
 #   is specified, the script must also support the `--version' arg. If the
 #   `--with-library-[exec-]prefix' arguments to ./configure are given, it
-#   must also support `--prefix' and `--exec-prefix'. Prefereable use
+#   must also support `--prefix' and `--exec-prefix'. Preferably use
 #   CONFIG-SCRIPTS as config script, CFLAGS-ARG instead of `--cflags` and
 #   LIBS-ARG instead of `--libs`, if given.
 #
-#   The SED-EXPR-EXTRACTOR parameter representes the expression used in sed
+#   The SED-EXPR-EXTRACTOR parameter represents the expression used in sed
 #   to extract the version number. Use it if your 'foo-config --version'
 #   dumps something like 'Foo library v1.0.0 (alfa)' instead of '1.0.0'.
 #
@@ -69,7 +69,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 11
+#serial 17
 
 AU_ALIAS([AC_PATH_GENERIC], [AX_PATH_GENERIC])
 AC_DEFUN([AX_PATH_GENERIC],[
@@ -89,7 +89,7 @@ AC_DEFUN([AX_PATH_GENERIC],[
   AC_ARG_VAR(UP[]_CFLAGS, [CFLAGS used for $1])
   AC_ARG_VAR(UP[]_LIBS,   [LIBS used for $1])
 
-  AS_IF([test x$UP[]_CFLAGS != x -o x$UP[]_LIBS != x],[
+  AS_IF([test x"$UP[]_CFLAGS" != x -o x"$UP[]_LIBS" != x],[
     dnl Don't run config script at all, use user-provided values instead.
     AC_SUBST(UP[]_CFLAGS)
     AC_SUBST(UP[]_LIBS)

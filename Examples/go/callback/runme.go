@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	. "./example"
+
+	. "swigtests/example"
 )
 
 func main() {
@@ -16,26 +17,18 @@ func main() {
 	caller.Call()
 	caller.DelCallback()
 
-	callback = NewDirectorCallback(new(GoCallback))
+	go_callback := NewGoCallback()
 
 	fmt.Println()
 	fmt.Println("Adding and calling a Go callback")
-	fmt.Println("------------------------------------")
+	fmt.Println("--------------------------------")
 
-	caller.SetCallback(callback)
+	caller.SetCallback(go_callback)
 	caller.Call()
 	caller.DelCallback()
 
-	// Test that a double delete does not occur as the object has
-	// already been deleted from the C++ layer.
-	DeleteDirectorCallback(callback)
+	DeleteGoCallback(go_callback)
 
 	fmt.Println()
 	fmt.Println("Go exit")
-}
-
-type GoCallback struct{}
-
-func (p *GoCallback) Run() {
-	fmt.Println("GoCallback.Run")
 }

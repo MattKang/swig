@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"./constover"
+
+	"swigtests/constover"
 )
 
 func main() {

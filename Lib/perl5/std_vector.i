@@ -32,9 +32,9 @@
 
 %{
 #include <vector>
-#include <algorithm>
-#include <stdexcept>
 %}
+%fragment("<algorithm>");
+%fragment("<stdexcept>");
 
 // exported class
 
@@ -119,7 +119,7 @@ namespace std {
         %typecheck(SWIG_TYPECHECK_VECTOR) vector<T> {
             {
                 /* wrapped vector? */
-                std::vector<T >* v;
+                std::vector< T >* v;
                 if (SWIG_ConvertPtr($input,(void **) &v, 
                                     $&1_descriptor,0) != -1) {
                     $1 = 1;
@@ -151,7 +151,7 @@ namespace std {
                                           const vector<T>* {
             {
                 /* wrapped vector? */
-                std::vector<T >* v;
+                std::vector< T >* v;
                 if (SWIG_ConvertPtr($input,(void **) &v, 
                                     $1_descriptor,0) != -1) {
                     $1 = 1;
@@ -180,9 +180,17 @@ namespace std {
             }
         }
       public:
+        typedef size_t size_type;
+        typedef ptrdiff_t difference_type;
+        typedef T value_type;
+        typedef value_type* pointer;
+        typedef const value_type* const_pointer;
+        typedef value_type& reference;
+        typedef const value_type& const_reference;
+
         vector(unsigned int size = 0);
         vector(unsigned int size, const T& value);
-        vector(const vector<T> &);
+        vector(const vector& other);
 
         unsigned int size() const;
         bool empty() const;
@@ -289,7 +297,7 @@ namespace std {
         %typecheck(SWIG_TYPECHECK_VECTOR) vector<T *> {
             {
                 /* wrapped vector? */
-                std::vector<T *>* v;
+                std::vector< T *>* v;
 		int res = SWIG_ConvertPtr($input,(void **) &v, $&1_descriptor,0);
                 if (SWIG_IsOK(res)) {
                     $1 = 1;
@@ -320,7 +328,7 @@ namespace std {
         %typecheck(SWIG_TYPECHECK_VECTOR) const vector<T *>&,const vector<T *>* {
             {
                 /* wrapped vector? */
-                std::vector<T *> *v;
+                std::vector< T *> *v;
 		int res = SWIG_ConvertPtr($input,%as_voidptrptr(&v), $1_descriptor,0);
                 if (SWIG_IsOK(res)) {
                     $1 = 1;
@@ -349,9 +357,17 @@ namespace std {
             }
         }
       public:
+        typedef size_t size_type;
+        typedef ptrdiff_t difference_type;
+        typedef T* value_type;
+        typedef value_type* pointer;
+        typedef const value_type* const_pointer;
+        typedef value_type& reference;
+        typedef const value_type& const_reference;
+
         vector(unsigned int size = 0);
         vector(unsigned int size, T *value);
-        vector(const vector<T *> &);
+        vector(const vector& other);
 
         unsigned int size() const;
         bool empty() const;
@@ -460,7 +476,7 @@ namespace std {
         %typecheck(SWIG_TYPECHECK_VECTOR) vector<T> {
             {
                 /* wrapped vector? */
-                std::vector<T >* v;
+                std::vector< T >* v;
                 if (SWIG_ConvertPtr($input,(void **) &v, 
                                     $&1_descriptor,0) != -1) {
                     $1 = 1;
@@ -490,7 +506,7 @@ namespace std {
                                           const vector<T>* {
             {
                 /* wrapped vector? */
-                std::vector<T >* v;
+                std::vector< T >* v;
                 if (SWIG_ConvertPtr($input,(void **) &v, 
                                     $1_descriptor,0) != -1) {
                     $1 = 1;
@@ -517,9 +533,17 @@ namespace std {
             }
         }
       public:
+        typedef size_t size_type;
+        typedef ptrdiff_t difference_type;
+        typedef T value_type;
+        typedef value_type* pointer;
+        typedef const value_type* const_pointer;
+        typedef value_type& reference;
+        typedef const value_type& const_reference;
+
         vector(unsigned int size = 0);
         vector(unsigned int size, T value);
-        vector(const vector<T> &);
+        vector(const vector& other);
 
         unsigned int size() const;
         bool empty() const;

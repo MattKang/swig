@@ -11,8 +11,9 @@
 #include <chicken.h>
 %}
 
-%insert(runtime) "swigrun.swg";            // Common C API type-checking code
-%insert(runtime) "chickenrun.swg";      // CHICKEN run-time code
+%insert(runtime) "swigrun.swg"          // Common C API type-checking code
+%insert(runtime) "swigerrors.swg"       // SWIG errors
+%insert(runtime) "chickenrun.swg"       // CHICKEN run-time code
 
 /* -----------------------------------------------------------------------------
  *                          standard typemaps
@@ -149,6 +150,7 @@ SIMPLE_TYPEMAP(double, C_c_double, C_flonum, C_swig_is_number, (double), C_SIZEO
 /* enum SWIGTYPE */
 %apply int { enum SWIGTYPE };
 %apply const int& { const enum SWIGTYPE& };
+%apply const int& { const enum SWIGTYPE&& };
 
 %typemap(varin) enum SWIGTYPE
 {
@@ -178,7 +180,7 @@ SIMPLE_TYPEMAP(double, C_c_double, C_flonum, C_swig_is_number, (double), C_SIZEO
 %typemap(freearg) char * "if ($1 != NULL) { free ($1); }"
 
 /* Pointers, references, and arrays */
-%typemap(in,closcode="(slot-ref $input 'swig-this)") SWIGTYPE *, SWIGTYPE [], SWIGTYPE &  {
+%typemap(in,closcode="(slot-ref $input 'swig-this)") SWIGTYPE *, SWIGTYPE [], SWIGTYPE &, SWIGTYPE &&  {
    $1 = ($1_ltype)SWIG_MustGetPtr($input, $descriptor, $argnum, $disown);
 }
 
@@ -199,6 +201,10 @@ SIMPLE_TYPEMAP(double, C_c_double, C_flonum, C_swig_is_number, (double), C_SIZEO
   $1 = *(($1_ltype)SWIG_MustGetPtr($input, $descriptor, 1, 0));
 }
 
+%typemap(varin,closcode="(slot-ref $input 'swig-this)") SWIGTYPE && {
+  $1 = *(($1_ltype)SWIG_MustGetPtr($input, $descriptor, 1, 0));
+}
+
 %typemap(varin) SWIGTYPE [] {
   SWIG_Chicken_Barf(SWIG_BARF1_BAD_ARGUMENT_TYPE, "Type error");
 }
@@ -216,7 +222,7 @@ SIMPLE_TYPEMAP(double, C_c_double, C_flonum, C_swig_is_number, (double), C_SIZEO
   $1 = SWIG_MustGetPtr($input, NULL, 1, 0);
 }
 
-%typemap(out) SWIGTYPE *, SWIGTYPE &, SWIGTYPE [] {
+%typemap(out) SWIGTYPE *, SWIGTYPE &, SWIGTYPE &&, SWIGTYPE [] {
   C_word *known_space = C_alloc(C_SIZEOF_SWIG_POINTER);
   $result = SWIG_NewPointerObj($1, $descriptor, $owner);
 }
@@ -233,6 +239,11 @@ SIMPLE_TYPEMAP(double, C_c_double, C_flonum, C_swig_is_number, (double), C_SIZEO
 }
 
 %typemap(varout) SWIGTYPE & {
+  C_word *known_space = C_alloc(C_SIZEOF_SWIG_POINTER);
+  $result = SWIG_NewPointerObj((void *) &$varname, $1_descriptor, 0);
+}
+
+%typemap(varout) SWIGTYPE && {
   C_word *known_space = C_alloc(C_SIZEOF_SWIG_POINTER);
   $result = SWIG_NewPointerObj((void *) &$varname, $1_descriptor, 0);
 }
@@ -531,7 +542,7 @@ $result = C_SCHEME_UNDEFINED;
 %typemap(constcode) char *
 "static const char *$result = $value;"
 
-%typemap(constcode) SWIGTYPE *, SWIGTYPE &, SWIGTYPE []
+%typemap(constcode) SWIGTYPE *, SWIGTYPE &, SWIGTYPE &&, SWIGTYPE []
 "static const void *$result = (void*) $value;"
 
 /* ------------------------------------------------------------
@@ -607,7 +618,7 @@ $result = C_SCHEME_UNDEFINED;
   $1 = C_swig_is_string ($input);
 }
 
-%typecheck(SWIG_TYPECHECK_POINTER) SWIGTYPE *, SWIGTYPE &, SWIGTYPE [] {
+%typecheck(SWIG_TYPECHECK_POINTER) SWIGTYPE *, SWIGTYPE [] {
   void *ptr;
   $1 = !SWIG_ConvertPtr($input, &ptr, $1_descriptor, 0);
 }
@@ -620,22 +631,30 @@ $result = C_SCHEME_UNDEFINED;
 %typecheck(SWIG_TYPECHECK_POINTER) SWIGTYPE &
 {
   void *ptr = 0;
-  if (SWIG_ConvertPtr($input, &ptr, $descriptor, 0)) {
-    /* error */
+  if (SWIG_ConvertPtr($input, &ptr, $descriptor, SWIG_POINTER_NO_NULL)) {
     $1 = 0;
   } else {
-    $1 = (ptr != 0);
+    $1 = 1;
+  }
+}
+
+%typecheck(SWIG_TYPECHECK_POINTER) SWIGTYPE &&
+{
+  void *ptr = 0;
+  if (SWIG_ConvertPtr($input, &ptr, $descriptor, SWIG_POINTER_NO_NULL)) {
+    $1 = 0;
+  } else {
+    $1 = 1;
   }
 }
 
 %typecheck(SWIG_TYPECHECK_POINTER) SWIGTYPE 
 {
   void *ptr = 0;
-  if (SWIG_ConvertPtr($input, &ptr, $&descriptor, 0)) {
-    /* error */
+  if (SWIG_ConvertPtr($input, &ptr, $&descriptor, SWIG_POINTER_NO_NULL)) {
     $1 = 0;
   } else {
-    $1 = (ptr != 0);
+    $1 = 1;
   }
 }
 
@@ -673,6 +692,12 @@ $result = C_SCHEME_UNDEFINED;
   SWIG_Chicken_ThrowException(ptr);
 }
 
+%typemap(throws) SWIGTYPE && {
+  C_word *known_space = C_alloc(C_SIZEOF_SWIG_POINTER);
+  C_word ptr = SWIG_NewPointerObj((void *)&($1),$descriptor,0);
+  SWIG_Chicken_ThrowException(ptr);
+}
+
 /* ------------------------------------------------------------
  * ANSI C typemaps
  * ------------------------------------------------------------ */
@@ -685,9 +710,12 @@ $result = C_SCHEME_UNDEFINED;
 
 /* Array reference typemaps */
 %apply SWIGTYPE & { SWIGTYPE ((&)[ANY]) }
+%apply SWIGTYPE && { SWIGTYPE ((&&)[ANY]) }
 
 /* const pointers */
 %apply SWIGTYPE * { SWIGTYPE *const }
+%apply SWIGTYPE (CLASS::*) { SWIGTYPE (CLASS::*const) }
+%apply SWIGTYPE & { SWIGTYPE (CLASS::*const&) }
 
 /* ------------------------------------------------------------
  * Overloaded operator support

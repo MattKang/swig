@@ -4,6 +4,8 @@
 
 %module keyword_rename
 
+%feature("kwargs");
+
 #pragma SWIG nowarn=SWIGWARN_PARSE_KEYWORD
 
 %inline %{
@@ -30,6 +32,10 @@ struct sealed {int i;};
 /* Go Keywords */
 KW(go, defer)
 KW(chan, fallthrough)
+
+/* Lua keywords */
+KW(end, function)
+KW(nil,local)
 
 %}
 

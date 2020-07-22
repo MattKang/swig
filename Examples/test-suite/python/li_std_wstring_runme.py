@@ -1,78 +1,79 @@
 import li_std_wstring
+import sys
 
-x=u"h"
+def check_equal(a, b):
+    if a != b:
+        raise RuntimeError("failed {} {}".format(a, b))
 
-if li_std_wstring.test_wcvalue(x) != x:
-  print li_std_wstring.test_wcvalue(x)
-  raise RuntimeError("bad string mapping")
+h = u"h"
+check_equal(li_std_wstring.test_wcvalue(h), h)
 
-x=u"hello"
-if li_std_wstring.test_ccvalue(x) != x:
-  raise RuntimeError("bad string mapping")
+x = u"abc"
+check_equal(li_std_wstring.test_ccvalue(x), x)
+check_equal(li_std_wstring.test_cvalue(x), x)
 
-if li_std_wstring.test_cvalue(x) != x:
-  raise RuntimeError("bad string mapping")
+check_equal(li_std_wstring.test_wchar_overload(x), x)
+check_equal(li_std_wstring.test_wchar_overload(), None)
 
-if li_std_wstring.test_value(x) != x:
-  print x, li_std_wstring.test_value(x)
-  raise RuntimeError("bad string mapping")
+li_std_wstring.test_pointer(None)
+li_std_wstring.test_const_pointer(None)
 
-if li_std_wstring.test_const_reference(x) != x:
-  raise RuntimeError("bad string mapping")
+try:
+    li_std_wstring.test_value(None)
+    raise RuntimeError("NULL check failed")
+except TypeError as e:
+    pass
 
+try:
+      li_std_wstring.test_reference(None)
+      raise RuntimeError("NULL check failed")
+except ValueError as e:
+    if "invalid null reference" not in str(e):
+        raise RuntimeError("Missing text {}".format(e))
+try:
+    li_std_wstring.test_const_reference(None)
+    raise RuntimeError("NULL check failed")
+except ValueError as e:
+    if "invalid null reference" not in str(e):
+        raise RuntimeError("Missing text {}".format(e))
 
-s = li_std_wstring.wstring(u"he")
-s = s + u"llo"
+x = "hello"
+check_equal(li_std_wstring.test_const_reference(x), x)
 
-if s != x:
-  print s, x
-  raise RuntimeError("bad string mapping")
+s = "abc"
+if not li_std_wstring.test_equal_abc(s):
+    raise RuntimeError("Not equal {}".format(s))
 
-if s[1:4] != x[1:4]:
-  raise RuntimeError("bad string mapping")
+try:
+    li_std_wstring.test_throw
+except RuntimeError as e:
+    check_equal(e.message, "throwing test_throw")
 
-if li_std_wstring.test_value(s) != x:
-  raise RuntimeError("bad string mapping")
+x = "abc\0def"
+check_equal(li_std_wstring.test_value(x), x)
+check_equal(li_std_wstring.test_ccvalue(x), "abc")
+check_equal(li_std_wstring.test_wchar_overload(x), "abc")
 
-if li_std_wstring.test_const_reference(s) != x:
-  raise RuntimeError("bad string mapping")
+################### Python specific
 
-a = li_std_wstring.A(s)
+# Byte strings only converted in Python 2
+if sys.version_info[0:2] < (3, 0):
+    x = b"hello there"
+    if li_std_wstring.test_value(x) != x:
+        raise RuntimeError("bad string mapping")
 
-if li_std_wstring.test_value(a) != x:
-  raise RuntimeError("bad string mapping")
+# Invalid utf-8 in a byte string fails in all versions
+x = b"h\xe9llo"
+try:
+    li_std_wstring.test_value(x)
+    raise RuntimeError("TypeError not thrown")
+except TypeError:
+    pass
 
-if li_std_wstring.test_const_reference(a) != x:
-  raise RuntimeError("bad string mapping")
-
-b = li_std_wstring.wstring(" world")
-
-if a + b != "hello world":
-  raise RuntimeError("bad string mapping")
-  
-if a + " world" != "hello world":
-  raise RuntimeError("bad string mapping")
-
-# This is expected to fail if -builtin is used
-if "hello" + b != "hello world":
-  raise RuntimeError("bad string mapping")
-
-# This is expected to fail if -builtin is used
-c = "hello" + b
-if c.find_last_of("l") != 9:
-  raise RuntimeError("bad string mapping")
-  
-s = "hello world"
-
-b = li_std_wstring.B("hi")
-
-b.name = li_std_wstring.wstring(u"hello")
-if b.name != "hello":
-  raise RuntimeError("bad string mapping")
-
-
-b.a = li_std_wstring.A("hello")
-if b.a != u"hello":
-  raise RuntimeError("bad string mapping")
-
-
+# Check surrogateescape
+if sys.version_info[0:2] > (3, 1):
+    x = u"h\udce9llo"  # surrogate escaped representation of C char*: "h\xe9llo"
+    if li_std_wstring.non_utf8_c_str() != x:
+        raise RuntimeError("surrogateescape not working")
+    if li_std_wstring.size_wstring(x) != 5 and len(x) != 5:
+        raise RuntimeError("Unexpected length")

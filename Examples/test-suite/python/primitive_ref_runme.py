@@ -30,10 +30,10 @@ if ref_float(3.5) != 3.5:
 if ref_double(3.5) != 3.5:
     raise RuntimeError
 
-if ref_bool(1) != 1:
+if ref_bool(True) != True:
     raise RuntimeError
 
-if ref_char('x') != 'x':
+if ref_char("x") != "x":
     raise RuntimeError
 
 if ref_over(0) != 0:

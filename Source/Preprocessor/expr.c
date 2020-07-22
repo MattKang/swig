@@ -12,8 +12,6 @@
  * encountered during preprocessing.
  * ----------------------------------------------------------------------------- */
 
-char cvsroot_expr_c[] = "$Id$";
-
 #include "swig.h"
 #include "preprocessor.h"
 
@@ -35,7 +33,7 @@ static exprval stack[256];	/* Parsing stack       */
 static int sp = 0;		/* Stack pointer       */
 static int prec[256];		/* Precedence rules    */
 static int expr_init = 0;	/* Initialization flag */
-static char *errmsg = 0;	/* Parsing error       */
+static const char *errmsg = 0;	/* Parsing error       */
 
 /* Initialize the precedence table for various operators.  Low values have higher precedence */
 static void init_precedence() {
@@ -190,12 +188,22 @@ static int reduce_op() {
       sp--;
       break;
     case SWIG_TOKEN_SLASH:
-      stack[sp - 2].value = stack[sp - 2].value / stack[sp].value;
-      sp -= 2;
+      if (stack[sp].value != 0) {
+	stack[sp - 2].value = stack[sp - 2].value / stack[sp].value;
+	sp -= 2;
+      } else {
+	errmsg = "Division by zero in expression";
+	return 0;
+      }
       break;
     case SWIG_TOKEN_PERCENT:
-      stack[sp - 2].value = stack[sp - 2].value % stack[sp].value;
-      sp -= 2;
+      if (stack[sp].value != 0) {
+	stack[sp - 2].value = stack[sp - 2].value % stack[sp].value;
+	sp -= 2;
+      } else {
+	errmsg = "Modulo by zero in expression";
+	return 0;
+      }
       break;
     case SWIG_TOKEN_LSHIFT:
       stack[sp - 2].value = stack[sp - 2].value << stack[sp].value;
@@ -311,6 +319,10 @@ int Preprocessor_expr(DOH *s, int *error) {
 	stack[sp].value = 0;
 	stack[sp].svalue = 0;
 	stack[sp].op = EXPR_VALUE;
+      } else if ((token == SWIG_TOKEN_FLOAT) || (token == SWIG_TOKEN_DOUBLE)) {
+	errmsg = "Floating point constant in preprocessor expression";
+	*error = 1;
+	return 0;
       } else
 	goto syntax_error;
       break;
@@ -435,6 +447,6 @@ extra_rparen:
  * Return error message set by the evaluator (if any)
  * ----------------------------------------------------------------------------- */
 
-char *Preprocessor_expr_error() {
+const char *Preprocessor_expr_error() {
   return errmsg;
 }

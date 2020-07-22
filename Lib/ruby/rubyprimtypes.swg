@@ -10,15 +10,16 @@
 %fragment("SWIG_ruby_failed","header")
 {
 SWIGINTERN VALUE
-SWIG_ruby_failed(void)
+SWIG_ruby_failed(VALUE SWIGUNUSEDPARM(arg1), VALUE SWIGUNUSEDPARM(arg2))
 {
   return Qnil;
 } 
 }
 
 %define %ruby_aux_method(Type, Method, Action)
-SWIGINTERN VALUE SWIG_AUX_##Method##(VALUE *args)
+SWIGINTERN VALUE SWIG_AUX_##Method##(VALUE arg)
 {
+  VALUE *args = (VALUE *)arg;
   VALUE obj = args[0];
   VALUE type = TYPE(obj);
   Type *res = (Type *)(args[1]);
@@ -79,7 +80,7 @@ SWIG_AsVal_dec(long)(VALUE obj, long* val)
     VALUE a[2];
     a[0] = obj;
     a[1] = (VALUE)(&v);
-    if (rb_rescue(RUBY_METHOD_FUNC(SWIG_AUX_NUM2LONG), (VALUE)a, RUBY_METHOD_FUNC(SWIG_ruby_failed), 0) != Qnil) {
+    if (rb_rescue(VALUEFUNC(SWIG_AUX_NUM2LONG), (VALUE)a, VALUEFUNC(SWIG_ruby_failed), 0) != Qnil) {
       if (val) *val = v;
       return SWIG_OK;
     }
@@ -111,7 +112,7 @@ SWIG_AsVal_dec(unsigned long)(VALUE obj, unsigned long *val)
     VALUE a[2];
     a[0] = obj;
     a[1] = (VALUE)(&v);
-    if (rb_rescue(RUBY_METHOD_FUNC(SWIG_AUX_NUM2ULONG), (VALUE)a, RUBY_METHOD_FUNC(SWIG_ruby_failed), 0) != Qnil) {
+    if (rb_rescue(VALUEFUNC(SWIG_AUX_NUM2ULONG), (VALUE)a, VALUEFUNC(SWIG_ruby_failed), 0) != Qnil) {
       if (val) *val = v;
       return SWIG_OK;
     }
@@ -124,15 +125,20 @@ SWIG_AsVal_dec(unsigned long)(VALUE obj, unsigned long *val)
 
 %fragment(SWIG_From_frag(long long),"header",
 	  fragment=SWIG_From_frag(long),
-	  fragment="<limits.h>") {
+	  fragment="SWIG_LongLongAvailable") {
+%#ifdef SWIG_LONG_LONG_AVAILABLE
 SWIGINTERNINLINE VALUE 
 SWIG_From_dec(long long)(long long value)
 {
   return LL2NUM(value);
 }
+%#endif
 }
 
-%fragment(SWIG_AsVal_frag(long long),"header",fragment="SWIG_ruby_failed") {
+%fragment(SWIG_AsVal_frag(long long),"header",
+	  fragment="SWIG_ruby_failed",
+	  fragment="SWIG_LongLongAvailable") {
+%#ifdef SWIG_LONG_LONG_AVAILABLE
 %ruby_aux_method(long long, NUM2LL, type == T_FIXNUM ? NUM2LL(obj) : rb_big2ll(obj))
 
 SWIGINTERN int
@@ -144,28 +150,33 @@ SWIG_AsVal_dec(long long)(VALUE obj, long long *val)
     VALUE a[2];
     a[0] = obj;
     a[1] = (VALUE)(&v);
-    if (rb_rescue(RUBY_METHOD_FUNC(SWIG_AUX_NUM2LL), (VALUE)a, RUBY_METHOD_FUNC(SWIG_ruby_failed), 0) != Qnil) {
+    if (rb_rescue(VALUEFUNC(SWIG_AUX_NUM2LL), (VALUE)a, VALUEFUNC(SWIG_ruby_failed), 0) != Qnil) {
       if (val) *val = v;
       return SWIG_OK;
     }
   }
   return SWIG_TypeError;
 }
+%#endif
 }
 
 /* unsigned long long */
 
 %fragment(SWIG_From_frag(unsigned long long),"header",
-	  fragment=SWIG_From_frag(long long),
-	  fragment="<limits.h>") {
+	  fragment="SWIG_LongLongAvailable") {
+%#ifdef SWIG_LONG_LONG_AVAILABLE
 SWIGINTERNINLINE VALUE 
 SWIG_From_dec(unsigned long long)(unsigned long long value)
 {
   return ULL2NUM(value);
 }
+%#endif
 }
 
-%fragment(SWIG_AsVal_frag(unsigned long long),"header",fragment="SWIG_ruby_failed") {
+%fragment(SWIG_AsVal_frag(unsigned long long),"header",
+	  fragment="SWIG_ruby_failed",
+	  fragment="SWIG_LongLongAvailable") {
+%#ifdef SWIG_LONG_LONG_AVAILABLE
 %ruby_aux_method(long long, NUM2ULL,  type == T_FIXNUM ? NUM2ULL(obj) : rb_big2ull(obj))
 
 SWIGINTERN int
@@ -177,13 +188,14 @@ SWIG_AsVal_dec(unsigned long long)(VALUE obj, unsigned long long *val)
     VALUE a[2];
     a[0] = obj;
     a[1] = (VALUE)(&v);
-    if (rb_rescue(RUBY_METHOD_FUNC(SWIG_AUX_NUM2ULL), (VALUE)a, RUBY_METHOD_FUNC(SWIG_ruby_failed), 0) != Qnil) {
+    if (rb_rescue(VALUEFUNC(SWIG_AUX_NUM2ULL), (VALUE)a, VALUEFUNC(SWIG_ruby_failed), 0) != Qnil) {
       if (val) *val = v;
       return SWIG_OK;
     }
   }
   return SWIG_TypeError;
 }
+%#endif
 }
 
 /* double */
@@ -193,7 +205,7 @@ SWIG_AsVal_dec(unsigned long long)(VALUE obj, unsigned long long *val)
 }
 
 %fragment(SWIG_AsVal_frag(double),"header",fragment="SWIG_ruby_failed") {
-%ruby_aux_method(double, NUM2DBL, NUM2DBL(obj))
+%ruby_aux_method(double, NUM2DBL, NUM2DBL(obj); (void)type)
 
 SWIGINTERN int
 SWIG_AsVal_dec(double)(VALUE obj, double *val)
@@ -204,7 +216,7 @@ SWIG_AsVal_dec(double)(VALUE obj, double *val)
     VALUE a[2];
     a[0] = obj;
     a[1] = (VALUE)(&v);
-    if (rb_rescue(RUBY_METHOD_FUNC(SWIG_AUX_NUM2DBL), (VALUE)a, RUBY_METHOD_FUNC(SWIG_ruby_failed), 0) != Qnil) {
+    if (rb_rescue(VALUEFUNC(SWIG_AUX_NUM2DBL), (VALUE)a, VALUEFUNC(SWIG_ruby_failed), 0) != Qnil) {
       if (val) *val = v;
       return SWIG_OK;
     }

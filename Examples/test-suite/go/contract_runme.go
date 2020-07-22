@@ -1,6 +1,6 @@
 package main
 
-import "./contract"
+import "swigtests/contract"
 
 func main() {
 	contract.Test_preassert(1, 2)
@@ -196,13 +196,13 @@ func main() {
 	}()
 
 	//Namespace
-	my := contract.NewMyClass(1)
+	contract.NewMyClass(1)
 	func() {
 		defer func() {
 			if recover() == nil {
 				panic("Failed! constructor preassertion")
 			}
 		}()
-		my = contract.NewMyClass(0)
+		contract.NewMyClass(0)
 	}()
 }

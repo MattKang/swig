@@ -2,37 +2,39 @@
  * phpkw.swg
  * ----------------------------------------------------------------------------- */
 
-#define PHPKW(x) %keywordwarn("'" `x` "' is a PHP keyword, renamed as 'c_" `x` "'",sourcefmt="%(lower)s",rename="c_%s") `x`
+/* Keyword (case insensitive) */
+#define PHPKW(x) %keywordwarn("'" `x` "' is a PHP keyword, renaming to 'c_" `x` "'",sourcefmt="%(lower)s",rename="c_%s") `x`
 
-#define PHPCN(x) %keywordwarn("'" `x` "' is a PHP reserved class name, class renamed as 'c_" `x` "'",%$isclass,sourcefmt="%(lower)s",rename="c_%s") `x`
+/* Class (case insensitive) */
+#define PHPCN(x) %keywordwarn("'" `x` "' is a PHP reserved class name, renaming to 'c_" `x` "'",%$isclass,sourcefmt="%(lower)s",rename="c_%s") `x`
 
-#define PHPBN1(x) %builtinwarn("'" `x` "' conflicts with a built-in name in PHP",sourcefmt="%(lower)s") `x`
-#define PHPBN2(x) %builtinwarn("'" `x` "' conflicts with a built-in name in PHP") "::" `x`
-#define PHPFN(x) %keywordwarn("'" `x` "' is a PHP built-in function, renamed as 'c_" `x` "'",sourcefmt="%(lower)s",%$isfunction,%$not %$ismember,rename="c_%s") `x`
+/* Constant (case insensitive) */
+#define PHPBN1a(x) %namewarn(%warningmsg(SWIGWARN_PARSE_BUILTIN_NAME, "enum conflicts with a built-in constant '"`x`"' in PHP"),%$isenumitem,sourcefmt="%(lower)s") `x`
+#define PHPBN1b(x) %namewarn(%warningmsg(SWIGWARN_PARSE_BUILTIN_NAME, "constant conflicts with a built-in constant '"`x`"' in PHP"),%$isconstant,sourcefmt="%(lower)s") `x`
+%define PHPBN1(X)
+ PHPBN1a(X); PHPBN1b(X)
+%enddef
 
-/*
-   From
+/* Constant (case sensitive) */
+#define PHPBN2a(x) %namewarn(%warningmsg(SWIGWARN_PARSE_BUILTIN_NAME, "enum conflicts with a built-in constant '"`x`"' in PHP"),%$isenumitem) `x`
+#define PHPBN2b(x) %namewarn(%warningmsg(SWIGWARN_PARSE_BUILTIN_NAME, "constant conflicts with a built-in constant '"`x`"' in PHP"),%$isconstant) `x`
+%define PHPBN2(X)
+ PHPBN2a(X); PHPBN2b(X)
+%enddef
 
-     http://aspn.activestate.com/ASPN/docs/PHP/reserved.html
-     http://php.net/manual/en/reserved.keywords.php
+#define PHPFN(x) %keywordwarn("'" `x` "' is a PHP built-in function, renaming to 'c_" `x` "'",sourcefmt="%(lower)s",%$isfunction,%$not %$ismember,rename="c_%s") `x`
 
-   and reviewed by Olly Betts.
-
-   Further updates from the PHP manual on php.net.
-*/
-
-/* We classify these as kw since PHP will not run if used globally. */
-/* "You cannot use any of the following words as constants, class names,
+/* From: http://php.net/manual/en/reserved.keywords.php
+ * "You cannot use any of the following words as constants, class names,
  * function or method names. Using them as variable names is generally OK, but
  * could lead to confusion."
  */
-/* case insensitive */
-PHPKW(__halt_compiler);
+/* Check is case insensitive - these *MUST* be listed in lower case here */
 PHPKW(abstract);
 PHPKW(and);
-PHPKW(array);
 PHPKW(as);
 PHPKW(break);
+PHPKW(callable);
 PHPKW(case);
 PHPKW(catch);
 PHPKW(class);
@@ -41,93 +43,78 @@ PHPKW(const);
 PHPKW(continue);
 PHPKW(declare);
 PHPKW(default);
-PHPKW(die); // "Language construct"
 PHPKW(do);
-PHPKW(echo); // "Language construct"
 PHPKW(else);
 PHPKW(elseif);
-PHPKW(empty); // "Language construct"
 PHPKW(enddeclare);
 PHPKW(endfor);
 PHPKW(endforeach);
 PHPKW(endif);
 PHPKW(endswitch);
 PHPKW(endwhile);
-PHPKW(eval); // "Language construct"
-PHPKW(exit); // "Language construct"
 PHPKW(extends);
 PHPKW(final);
+PHPKW(finally);
 PHPKW(for);
 PHPKW(foreach);
 PHPKW(function);
 PHPKW(global);
-PHPKW(goto); // As of PHP5.3
+PHPKW(goto);
 PHPKW(if);
 PHPKW(implements);
-PHPKW(include); // "Language construct"
-PHPKW(include_once); // "Language construct"
 PHPKW(instanceof);
+PHPKW(insteadof);
 PHPKW(interface);
-PHPKW(isset); // "Language construct"
-PHPKW(list); // "Language construct"
-PHPKW(namespace); // As of PHP5.3
+PHPKW(namespace);
 PHPKW(new);
 PHPKW(or);
-PHPKW(print); // "Language construct"
 PHPKW(private);
 PHPKW(protected);
 PHPKW(public);
-PHPKW(require); // "Language construct"
-PHPKW(require_once); // "Language construct"
-PHPKW(return); // "Language construct"
 PHPKW(static);
 PHPKW(switch);
 PHPKW(throw);
+PHPKW(trait);
 PHPKW(try);
-PHPKW(unset); // "Language construct"
 PHPKW(use);
 PHPKW(var);
 PHPKW(while);
 PHPKW(xor);
-// Compile-time constants
-PHPKW(__CLASS__);
-PHPKW(__DIR__); // As of PHP5.3
-PHPKW(__FILE__);
-PHPKW(__FUNCTION__);
-PHPKW(__METHOD__);
-PHPKW(__NAMESPACE__); // As of PHP5.3
-PHPKW(__LINE__);
+PHPKW(yield);
+
+// Compile-time "magic" constants
+// From: http://php.net/manual/en/reserved.keywords.php
+// also at: http://php.net/manual/en/language.constants.predefined.php
+/* These *MUST* be listed in lower case here */
+PHPKW(__class__);
+PHPKW(__dir__);
+PHPKW(__file__);
+PHPKW(__function__);
+PHPKW(__line__);
+PHPKW(__method__);
+PHPKW(__namespace__);
+PHPKW(__trait__);
 
 /* We classify these as built-in names since they conflict, but PHP still runs */
 
-/* Type 1: case insensitive */
-PHPBN1(__sleep);
-PHPBN1(__wakeup);
-PHPBN1(not);
-PHPBN1(parent);
-PHPBN1(virtual);
-PHPBN1(NULL);
-PHPBN1(TRUE);
-PHPBN1(FALSE);
+/* Predefined case-insensitive constants */
+/* These *MUST* be listed in lower case here */
+PHPBN1(null);
+PHPBN1(true);
+PHPBN1(false);
 
-/* Type 2: case sensitive */
-/* "Core Predefined Constants" from http://uk2.php.net/manual/en/reserved.constants.php */
-PHPBN2(E_ALL);
-PHPBN2(E_ERROR);
-PHPBN2(E_PARSE);
-PHPBN2(E_WARNING);
-PHPBN2(E_NOTICE);
-PHPBN2(E_CORE_ERROR);
-PHPBN2(E_CORE_WARNING);
-PHPBN2(E_COMPILE_ERROR);
-PHPBN2(E_COMPILE_WARNING);
-PHPBN2(E_USER_ERROR);
-PHPBN2(E_USER_WARNING);
-PHPBN2(E_USER_NOTICE);
-PHPBN2(E_DEPRECATED); // As of PHP 5.3
-PHPBN2(E_USER_DEPRECATED); // As of PHP 5.3
-PHPBN2(PHP_OS);
+/* "Core Predefined Constants" from http://php.net/manual/en/reserved.constants.php */
+/* These are case sensitive */
 PHPBN2(PHP_VERSION);
+PHPBN2(PHP_MAJOR_VERSION);
+PHPBN2(PHP_MINOR_VERSION);
+PHPBN2(PHP_RELEASE_VERSION);
+PHPBN2(PHP_VERSION_ID);
+PHPBN2(PHP_EXTRA_VERSION);
+PHPBN2(PHP_ZTS);
+PHPBN2(PHP_DEBUG);
+PHPBN2(PHP_MAXPATHLEN);
+PHPBN2(PHP_OS);
 PHPBN2(PHP_SAPI);
 PHPBN2(PHP_EOL);
 PHPBN2(PHP_INT_MAX);
@@ -138,6 +125,8 @@ PHPBN2(PEAR_EXTENSION_DIR);
 PHPBN2(PHP_EXTENSION_DIR);
 PHPBN2(PHP_PREFIX);
 PHPBN2(PHP_BINDIR);
+PHPBN2(PHP_BINARY);
+PHPBN2(PHP_MANDIR);
 PHPBN2(PHP_LIBDIR);
 PHPBN2(PHP_DATADIR);
 PHPBN2(PHP_SYSCONFDIR);
@@ -145,24 +134,42 @@ PHPBN2(PHP_LOCALSTATEDIR);
 PHPBN2(PHP_CONFIG_FILE_PATH);
 PHPBN2(PHP_CONFIG_FILE_SCAN_DIR);
 PHPBN2(PHP_SHLIB_SUFFIX);
+PHPBN2(E_ERROR);
+PHPBN2(E_WARNING);
+PHPBN2(E_PARSE);
+PHPBN2(E_NOTICE);
+PHPBN2(E_CORE_ERROR);
+PHPBN2(E_CORE_WARNING);
+PHPBN2(E_COMPILE_ERROR);
+PHPBN2(E_COMPILE_WARNING);
+PHPBN2(E_USER_ERROR);
+PHPBN2(E_USER_WARNING);
+PHPBN2(E_USER_NOTICE);
+PHPBN2(E_DEPRECATED);
+PHPBN2(E_USER_DEPRECATED);
+PHPBN2(E_ALL);
+PHPBN2(E_STRICT);
+PHPBN2(__COMPILER_HALT_OFFSET__);
+// TRUE, FALSE, NULL are listed on the same page, but are actually
+// case-insensitive, whereas all the other constants listed there seem to be
+// case-sensitive, so we handle TRUE, FALSE, NULL in PHPBN1.
 PHPBN2(PHP_OUTPUT_HANDLER_START);
 PHPBN2(PHP_OUTPUT_HANDLER_CONT);
 PHPBN2(PHP_OUTPUT_HANDLER_END);
-PHPBN2(PHP_MAXPATHLEN); // As of PHP 5.3
 /* These don't actually seem to be set (tested on Linux, I guess they're
  * Windows only?) */
-PHPBN2(PHP_WINDOWS_NT_DOMAIN_CONTROLLER); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_NT_SERVER); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_NT_WORKSTATION); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_VERSION_BUILD); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_VERSION_MAJOR); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_VERSION_MINOR); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_VERSION_PLATFORM); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_VERSION_PRODUCTTYPE); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_VERSION_SP_MAJOR); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_VERSION_SP_MINOR); // As of PHP 5.3
-PHPBN2(PHP_WINDOWS_VERSION_SUITEMASK); // As of PHP 5.3
-/* "Standard Predefined Constants" from http://uk2.php.net/manual/en/reserved.constants.php */
+PHPBN2(PHP_WINDOWS_NT_DOMAIN_CONTROLLER);
+PHPBN2(PHP_WINDOWS_NT_SERVER);
+PHPBN2(PHP_WINDOWS_NT_WORKSTATION);
+PHPBN2(PHP_WINDOWS_VERSION_BUILD);
+PHPBN2(PHP_WINDOWS_VERSION_MAJOR);
+PHPBN2(PHP_WINDOWS_VERSION_MINOR);
+PHPBN2(PHP_WINDOWS_VERSION_PLATFORM);
+PHPBN2(PHP_WINDOWS_VERSION_PRODUCTTYPE);
+PHPBN2(PHP_WINDOWS_VERSION_SP_MAJOR);
+PHPBN2(PHP_WINDOWS_VERSION_SP_MINOR);
+PHPBN2(PHP_WINDOWS_VERSION_SUITEMASK);
+/* "Standard Predefined Constants" from http://php.net/manual/en/reserved.constants.php */
 PHPBN2(EXTR_OVERWRITE);
 PHPBN2(EXTR_SKIP);
 PHPBN2(EXTR_PREFIX_SAME);
@@ -191,8 +198,8 @@ PHPBN2(INI_USER);
 PHPBN2(INI_PERDIR);
 PHPBN2(INI_SYSTEM);
 PHPBN2(INI_ALL);
-PHPBN2(INI_SCANNER_NORMAL); // As of PHP 5.3
-PHPBN2(INI_SCANNER_RAW); // As of PHP 5.3
+PHPBN2(INI_SCANNER_NORMAL);
+PHPBN2(INI_SCANNER_RAW);
 PHPBN2(M_E);
 PHPBN2(M_LOG2E);
 PHPBN2(M_LOG10E);
@@ -206,10 +213,10 @@ PHPBN2(M_2_PI);
 PHPBN2(M_2_SQRTPI);
 PHPBN2(M_SQRT2);
 PHPBN2(M_SQRT1_2);
-PHPBN2(M_EULER); // As of PHP 5.2
-PHPBN2(M_LNPI); // As of PHP 5.2
-PHPBN2(M_SQRT3); // As of PHP 5.2
-PHPBN2(M_SQRTPI); // As of PHP 5.2
+PHPBN2(M_EULER);
+PHPBN2(M_LNPI);
+PHPBN2(M_SQRT3);
+PHPBN2(M_SQRTPI);
 PHPBN2(CRYPT_SALT_LENGTH);
 PHPBN2(CRYPT_STD_DES);
 PHPBN2(CRYPT_EXT_DES);
@@ -250,7 +257,7 @@ PHPBN2(STR_PAD_BOTH);
 PHPBN2(PATHINFO_DIRNAME);
 PHPBN2(PATHINFO_BASENAME);
 PHPBN2(PATHINFO_EXTENSION);
-PHPBN2(PATHINFO_FILENAME); // As of PHP 5.2
+PHPBN2(PATHINFO_FILENAME);
 PHPBN2(PATH_SEPARATOR);
 PHPBN2(CHAR_MAX);
 PHPBN2(LC_CTYPE);
@@ -370,11 +377,6 @@ PHPBN2(LOG_NDELAY);
 PHPBN2(LOG_NOWAIT);
 PHPBN2(LOG_PERROR);
 
-/* Added in PHP5 */
-PHPBN2(E_STRICT);
-PHPBN2(__COMPILER_HALT_OFFSET__);
-
-/* Added in PHP 5.2 */
 PHPBN2(PREG_BACKTRACK_LIMIT_ERROR);
 PHPBN2(PREG_BAD_UTF8_ERROR);
 PHPBN2(PREG_INTERNAL_ERROR);
@@ -396,10 +398,10 @@ PHPBN2(CURLFTPSSL_NONE);
 PHPBN2(CURLFTPSSL_TRY);
 PHPBN2(CURLOPT_FTP_SSL);
 PHPBN2(CURLOPT_FTPSSLAUTH);
-PHPBN2(CURLOPT_TCP_NODELAY); // Added in PHP 5.2.1
-PHPBN2(CURLOPT_TIMEOUT_MS); // Added in PHP 5.2.3
-PHPBN2(CURLOPT_CONNECTTIMEOUT_MS); // Added in PHP 5.2.3
-PHPBN2(GMP_VERSION); // Added in PHP 5.2.2
+PHPBN2(CURLOPT_TCP_NODELAY);
+PHPBN2(CURLOPT_TIMEOUT_MS);
+PHPBN2(CURLOPT_CONNECTTIMEOUT_MS);
+PHPBN2(GMP_VERSION);
 PHPBN2(SWFTEXTFIELD_USEFONT);
 PHPBN2(SWFTEXTFIELD_AUTOSIZE);
 PHPBN2(SWF_SOUND_NOT_COMPRESSED);
@@ -421,7 +423,6 @@ PHPBN2(SNMP_OID_OUTPUT_NUMERIC);
 PHPBN2(MSG_EAGAIN);
 PHPBN2(MSG_ENOMSG);
 
-/* Added in PHP 5.3 */
 PHPBN2(CURLOPT_PROGRESSFUNCTION);
 PHPBN2(IMG_FILTER_PIXELATE);
 PHPBN2(JSON_ERROR_CTRL_CHAR);
@@ -485,17 +486,177 @@ PHPBN2(SIG_UNBLOCK);
 PHPBN2(TRAP_BRKPT);
 PHPBN2(TRAP_TRACE);
 
-/* Class names reserved by PHP */
-/* case insensitive */
+PHPBN2(ENT_DISALLOWED);
+PHPBN2(ENT_HTML401);
+PHPBN2(ENT_HTML5);
+PHPBN2(ENT_SUBSTITUTE);
+PHPBN2(ENT_XML1);
+PHPBN2(ENT_XHTML);
+PHPBN2(IPPROTO_IP);
+PHPBN2(IPPROTO_IPV6);
+PHPBN2(IPV6_MULTICAST_HOPS);
+PHPBN2(IPV6_MULTICAST_IF);
+PHPBN2(IPV6_MULTICAST_LOOP);
+PHPBN2(IP_MULTICAST_IF);
+PHPBN2(IP_MULTICAST_LOOP);
+PHPBN2(IP_MULTICAST_TTL);
+PHPBN2(MCAST_JOIN_GROUP);
+PHPBN2(MCAST_LEAVE_GROUP);
+PHPBN2(MCAST_BLOCK_SOURCE);
+PHPBN2(MCAST_UNBLOCK_SOURCE);
+PHPBN2(MCAST_JOIN_SOURCE_GROUP);
+PHPBN2(MCAST_LEAVE_SOURCE_GROUP);
+PHPBN2(CURLOPT_MAX_RECV_SPEED_LARGE);
+PHPBN2(CURLOPT_MAX_SEND_SPEED_LARGE);
+PHPBN2(LIBXML_HTML_NODEFDTD);
+PHPBN2(LIBXML_HTML_NOIMPLIED);
+PHPBN2(LIBXML_PEDANTIC);
+PHPBN2(OPENSSL_CIPHER_AES_128_CBC);
+PHPBN2(OPENSSL_CIPHER_AES_192_CBC);
+PHPBN2(OPENSSL_CIPHER_AES_256_CBC);
+PHPBN2(OPENSSL_RAW_DATA);
+PHPBN2(OPENSSL_ZERO_PADDING);
+PHPBN2(PHP_OUTPUT_HANDLER_CLEAN);
+PHPBN2(PHP_OUTPUT_HANDLER_CLEANABLE);
+PHPBN2(PHP_OUTPUT_HANDLER_DISABLED);
+PHPBN2(PHP_OUTPUT_HANDLER_FINAL);
+PHPBN2(PHP_OUTPUT_HANDLER_FLUSH);
+PHPBN2(PHP_OUTPUT_HANDLER_FLUSHABLE);
+PHPBN2(PHP_OUTPUT_HANDLER_REMOVABLE);
+PHPBN2(PHP_OUTPUT_HANDLER_STARTED);
+PHPBN2(PHP_OUTPUT_HANDLER_STDFLAGS);
+PHPBN2(PHP_OUTPUT_HANDLER_WRITE);
+PHPBN2(PHP_SESSION_ACTIVE);
+PHPBN2(PHP_SESSION_DISABLED);
+PHPBN2(PHP_SESSION_NONE);
+PHPBN2(STREAM_META_ACCESS);
+PHPBN2(STREAM_META_GROUP);
+PHPBN2(STREAM_META_GROUP_NAME);
+PHPBN2(STREAM_META_OWNER);
+PHPBN2(STREAM_META_OWNER_NAME);
+PHPBN2(STREAM_META_TOUCH);
+PHPBN2(ZLIB_ENCODING_DEFLATE);
+PHPBN2(ZLIB_ENCODING_GZIP);
+PHPBN2(ZLIB_ENCODING_RAW);
+PHPBN2(U_IDNA_DOMAIN_NAME_TOO_LONG_ERROR);
+PHPBN2(IDNA_CHECK_BIDI);
+PHPBN2(IDNA_CHECK_CONTEXTJ);
+PHPBN2(IDNA_NONTRANSITIONAL_TO_ASCII);
+PHPBN2(IDNA_NONTRANSITIONAL_TO_UNICODE);
+PHPBN2(INTL_IDNA_VARIANT_2003);
+PHPBN2(INTL_IDNA_VARIANT_UTS46);
+PHPBN2(IDNA_ERROR_EMPTY_LABEL);
+PHPBN2(IDNA_ERROR_LABEL_TOO_LONG);
+PHPBN2(IDNA_ERROR_DOMAIN_NAME_TOO_LONG);
+PHPBN2(IDNA_ERROR_LEADING_HYPHEN);
+PHPBN2(IDNA_ERROR_TRAILING_HYPHEN);
+PHPBN2(IDNA_ERROR_HYPHEN_3_4);
+PHPBN2(IDNA_ERROR_LEADING_COMBINING_MARK);
+PHPBN2(IDNA_ERROR_DISALLOWED);
+PHPBN2(IDNA_ERROR_PUNYCODE);
+PHPBN2(IDNA_ERROR_LABEL_HAS_DOT);
+PHPBN2(IDNA_ERROR_INVALID_ACE_LABEL);
+PHPBN2(IDNA_ERROR_BIDI);
+PHPBN2(IDNA_ERROR_CONTEXTJ);
+PHPBN2(JSON_PRETTY_PRINT);
+PHPBN2(JSON_UNESCAPED_SLASHES);
+PHPBN2(JSON_NUMERIC_CHECK);
+PHPBN2(JSON_UNESCAPED_UNICODE);
+PHPBN2(JSON_BIGINT_AS_STRING);
+
+PHPBN2(IMG_AFFINE_TRANSLATE);
+PHPBN2(IMG_AFFINE_SCALE);
+PHPBN2(IMG_AFFINE_ROTATE);
+PHPBN2(IMG_AFFINE_SHEAR_HORIZONTAL);
+PHPBN2(IMG_AFFINE_SHEAR_VERTICAL);
+PHPBN2(IMG_CROP_DEFAULT);
+PHPBN2(IMG_CROP_TRANSPARENT);
+PHPBN2(IMG_CROP_BLACK);
+PHPBN2(IMG_CROP_WHITE);
+PHPBN2(IMG_CROP_SIDES);
+PHPBN2(IMG_FLIP_BOTH);
+PHPBN2(IMG_FLIP_HORIZONTAL);
+PHPBN2(IMG_FLIP_VERTICAL);
+PHPBN2(IMG_BELL);
+PHPBN2(IMG_BESSEL);
+PHPBN2(IMG_BICUBIC);
+PHPBN2(IMG_BICUBIC_FIXED);
+PHPBN2(IMG_BLACKMAN);
+PHPBN2(IMG_BOX);
+PHPBN2(IMG_BSPLINE);
+PHPBN2(IMG_CATMULLROM);
+PHPBN2(IMG_GAUSSIAN);
+PHPBN2(IMG_GENERALIZED_CUBIC);
+PHPBN2(IMG_HERMITE);
+PHPBN2(IMG_HAMMING);
+PHPBN2(IMG_HANNING);
+PHPBN2(IMG_MITCHELL);
+PHPBN2(IMG_POWER);
+PHPBN2(IMG_QUADRATIC);
+PHPBN2(IMG_SINC);
+PHPBN2(IMG_NEAREST_NEIGHBOUR);
+PHPBN2(IMG_WEIGHTED4);
+PHPBN2(IMG_TRIANGLE);
+PHPBN2(JSON_ERROR_RECURSION);
+PHPBN2(JSON_ERROR_INF_OR_NAN);
+PHPBN2(JSON_ERROR_UNSUPPORTED_TYPE);
+PHPBN2(MYSQLI_SERVER_PUBLIC_KEY);
+
+PHPBN2(LDAP_ESCAPE_DN);
+PHPBN2(LDAP_ESCAPE_FILTER);
+PHPBN2(OPENSSL_DEFAULT_STREAM_CIPHERS);
+PHPBN2(STREAM_CRYPTO_METHOD_ANY_CLIENT);
+PHPBN2(STREAM_CRYPTO_METHOD_ANY_SERVER);
+PHPBN2(STREAM_CRYPTO_METHOD_TLSv1_0_CLIENT);
+PHPBN2(STREAM_CRYPTO_METHOD_TLSv1_0_SERVER);
+PHPBN2(STREAM_CRYPTO_METHOD_TLSv1_1_CLIENT);
+PHPBN2(STREAM_CRYPTO_METHOD_TLSv1_1_SERVER);
+PHPBN2(STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT);
+PHPBN2(STREAM_CRYPTO_METHOD_TLSv1_2_SERVER);
+PHPBN2(PGSQL_CONNECT_ASYNC);
+PHPBN2(PGSQL_CONNECTION_AUTH_OK);
+PHPBN2(PGSQL_CONNECTION_AWAITING_RESPONSE);
+PHPBN2(PGSQL_CONNECTION_MADE);
+PHPBN2(PGSQL_CONNECTION_SETENV);
+PHPBN2(PGSQL_CONNECTION_SSL_STARTUP);
+PHPBN2(PGSQL_CONNECTION_STARTED);
+PHPBN2(PGSQL_DML_ESCAPE);
+PHPBN2(PGSQL_POLLING_ACTIVE);
+PHPBN2(PGSQL_POLLING_FAILED);
+PHPBN2(PGSQL_POLLING_OK);
+PHPBN2(PGSQL_POLLING_READING);
+PHPBN2(PGSQL_POLLING_WRITING);
+
+/* Class names reserved by PHP (case insensitive) */
+PHPCN(directory);
 PHPCN(stdclass);
 PHPCN(__php_incomplete_class);
-PHPCN(directory);
-/* Added in PHP5 (this list apparently depends which extensions you load by default). */
-PHPCN(parent);
-PHPCN(self);
+/* Added in PHP5. */
 PHPCN(exception);
-PHPCN(php_user_filter);
 PHPCN(errorexception);
+PHPCN(php_user_filter);
+PHPCN(closure);
+PHPCN(generator);
+PHPCN(self);
+PHPCN(static);
+PHPCN(parent);
+/* http://php.net/manual/en/migration70.incompatible.php#migration70.incompatible.other.classes */
+PHPCN(bool); // As of PHP 7.0
+PHPCN(int); // As of PHP 7.0
+PHPCN(float); // As of PHP 7.0
+PHPCN(string); // As of PHP 7.0
+PHPCN(NULL); // As of PHP 7.0
+PHPCN(TRUE); // As of PHP 7.0
+PHPCN(FALSE); // As of PHP 7.0
+PHPCN(resource); // As of PHP 7.0 (currently works but reserved)
+PHPCN(object); // As of PHP 7.0 (currently works but reserved)
+PHPCN(mixed); // As of PHP 7.0 (currently works but reserved)
+PHPCN(numeric); // As of PHP 7.0 (currently works but reserved)
+/* http://php.net/manual/en/migration71.incompatible.php#migration71.incompatible.invalid-class-names */
+PHPCN(iterable); // As of PHP 7.1
+PHPCN(void); // As of PHP 7.1
+/* From extensions (which of these are actually predefined depends which
+ * extensions are loaded by default). */
 PHPCN(xmlwriter);
 PHPCN(libxmlerror);
 PHPCN(simplexmlelement);
@@ -588,29 +749,128 @@ PHPCN(sqliteexception);
 PHPCN(datetime);
 
 /* Built-in PHP functions (incomplete). */
-PHPFN(cos);
-PHPFN(sin);
-PHPFN(tan);
+/* Includes Array Functions - http://php.net/manual/en/ref.array.php */
+/* Check is case insensitive - these *MUST* be listed in lower case here */
+PHPFN(__halt_compiler);
 PHPFN(acos);
+PHPFN(array);
+PHPFN(array_change_key_case);
+PHPFN(array_chunk);
+PHPFN(array_column);
+PHPFN(array_combine);
+PHPFN(array_count_values);
+PHPFN(array_diff);
+PHPFN(array_diff_assoc);
+PHPFN(array_diff_key);
+PHPFN(array_diff_uassoc);
+PHPFN(array_diff_ukey);
+PHPFN(array_fill);
+PHPFN(array_fill_keys);
+PHPFN(array_filter);
+PHPFN(array_flip);
+PHPFN(array_intersect);
+PHPFN(array_intersect_assoc);
+PHPFN(array_intersect_key);
+PHPFN(array_intersect_uassoc);
+PHPFN(array_intersect_ukey);
+PHPFN(array_key_exists);
+PHPFN(array_keys);
+PHPFN(array_map);
+PHPFN(array_merge);
+PHPFN(array_merge_recursive);
+PHPFN(array_multisort);
+PHPFN(array_pad);
+PHPFN(array_pop);
+PHPFN(array_product);
+PHPFN(array_push);
+PHPFN(array_rand);
+PHPFN(array_reduce);
+PHPFN(array_replace);
+PHPFN(array_replace_recursive);
+PHPFN(array_reverse);
+PHPFN(array_search);
+PHPFN(array_shift);
+PHPFN(array_slice);
+PHPFN(array_splice);
+PHPFN(array_sum);
+PHPFN(array_udiff);
+PHPFN(array_udiff_assoc);
+PHPFN(array_udiff_uassoc);
+PHPFN(array_uintersect);
+PHPFN(array_uintersect_assoc);
+PHPFN(array_uintersect_uassoc);
+PHPFN(array_unique);
+PHPFN(array_unshift);
+PHPFN(array_values);
+PHPFN(array_walk);
+PHPFN(array_walk_recursive);
+PHPFN(arsort);
 PHPFN(asin);
+PHPFN(asort);
 PHPFN(atan);
 PHPFN(atan2);
-PHPFN(cosh);
-PHPFN(sinh);
-PHPFN(tanh);
-PHPFN(exp);
-PHPFN(log);
-PHPFN(log10);
-PHPFN(pow);
-PHPFN(sqrt);
 PHPFN(ceil);
+PHPFN(compact);
+PHPFN(cos);
+PHPFN(cosh);
+PHPFN(count);
+PHPFN(current);
+PHPFN(die); // "Language construct"
+PHPFN(each);
+PHPFN(echo); // "Language construct"
+PHPFN(empty);
+PHPFN(end);
+PHPFN(eval); // "Language construct"
+PHPFN(exit); // "Language construct"
+PHPFN(exp);
+PHPFN(extract);
 PHPFN(floor);
 PHPFN(fmod);
-PHPFN(min);
+PHPFN(in_array);
+PHPFN(include); // "Language construct"
+PHPFN(include_once); // "Language construct"
+PHPFN(isset); // "Language construct"
+PHPFN(key);
+PHPFN(key_exists);
+PHPFN(krsort);
+PHPFN(ksort);
+PHPFN(list); // "Language construct"
+PHPFN(log);
+PHPFN(log10);
 PHPFN(max);
+PHPFN(min);
+PHPFN(natcasesort);
+PHPFN(natsort);
+PHPFN(next);
+PHPFN(pos);
+PHPFN(pow);
+PHPFN(prev);
+PHPFN(print); // "Language construct"
+PHPFN(range);
+PHPFN(reset);
+PHPFN(rsort);
+PHPFN(require); // "Language construct"
+PHPFN(require_once); // "Language construct"
+PHPFN(return); // "Language construct"
+PHPFN(shuffle);
+PHPFN(sin);
+PHPFN(sinh);
+PHPFN(sizeof);
+PHPFN(sort);
+PHPFN(sqrt);
+PHPFN(tan);
+PHPFN(tanh);
+PHPFN(uasort);
+PHPFN(uksort);
+PHPFN(unset); // "Language construct"
+PHPFN(usort);
 
 #undef PHPKW
+#undef PHPBN1a
+#undef PHPBN1b
 #undef PHPBN1
+#undef PHPBN2a
+#undef PHPBN2b
 #undef PHPBN2
 #undef PHPCN
 #undef PHPFN

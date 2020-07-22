@@ -9,13 +9,11 @@
  * scanner.c
  *
  * SWIG tokenizer.  This file is a wrapper around the generic C scanner
- * found in Swig/scanner.c.   Extra logic is added both to accomodate the
+ * found in Swig/scanner.c.   Extra logic is added both to accommodate the
  * bison-based grammar and certain peculiarities of C++ parsing (e.g.,
  * operator overloading, typedef resolution, etc.).  This code also splits
  * C identifiers up into keywords and SWIG directives.
  * ----------------------------------------------------------------------------- */
-
-char cvsroot_cscanner_c[] = "$Id$";
 
 #include "cparse.h"
 #include "parser.h"
@@ -39,6 +37,12 @@ int     cparse_start_line = 0;
 /* C++ mode */
 int cparse_cplusplus = 0;
 
+/* Generate C++ compatible code when wrapping C code */
+int cparse_cplusplusout = 0;
+
+/* To allow better error reporting */
+String *cparse_unknown_directive = 0;
+
 /* Private vars */
 static int scan_init = 0;
 static int num_brace = 0;
@@ -46,12 +50,71 @@ static int last_brace = 0;
 static int last_id = 0;
 static int rename_active = 0;
 
+/* Doxygen comments scanning */
+int scan_doxygen_comments = 0;
+
+int isStructuralDoxygen(String *s) {
+  static const char* const structuralTags[] = {
+    "addtogroup",
+    "callgraph",
+    "callergraph",
+    "category",
+    "def",
+    "defgroup",
+    "dir",
+    "example",
+    "file",
+    "headerfile",
+    "internal",
+    "mainpage",
+    "name",
+    "nosubgrouping",
+    "overload",
+    "package",
+    "page",
+    "protocol",
+    "relates",
+    "relatesalso",
+    "showinitializer",
+    "weakgroup",
+  };
+
+  unsigned n;
+  char *slashPointer = Strchr(s, '\\');
+  char *atPointer = Strchr(s,'@');
+  if (slashPointer == NULL && atPointer == NULL)
+    return 0;
+  else if(slashPointer == NULL)
+    slashPointer = atPointer;
+
+  slashPointer++; /* skip backslash or at sign */
+
+  for (n = 0; n < sizeof(structuralTags)/sizeof(structuralTags[0]); n++) {
+    const size_t len = strlen(structuralTags[n]);
+    if (strncmp(slashPointer, structuralTags[n], len) == 0) {
+      /* Take care to avoid false positives with prefixes of other tags. */
+      if (slashPointer[len] == '\0' || isspace(slashPointer[len]))
+	return 1;
+    }
+  }
+
+  return 0;
+}
+
 /* -----------------------------------------------------------------------------
  * Swig_cparse_cplusplus()
  * ----------------------------------------------------------------------------- */
 
 void Swig_cparse_cplusplus(int v) {
   cparse_cplusplus = v;
+}
+
+/* -----------------------------------------------------------------------------
+ * Swig_cparse_cplusplusout()
+ * ----------------------------------------------------------------------------- */
+
+void Swig_cparse_cplusplusout(int v) {
+  cparse_cplusplusout = v;
 }
 
 /* ----------------------------------------------------------------------------
@@ -103,10 +166,11 @@ void start_inline(char *text, int line) {
  * ----------------------------------------------------------------------------- */
 
 void skip_balanced(int startchar, int endchar) {
+  int start_line = Scanner_line(scan);
   Clear(scanner_ccode);
 
   if (Scanner_skip_balanced(scan,startchar,endchar) < 0) {
-    Swig_error(Scanner_file(scan),Scanner_errline(scan), "Missing '%c'. Reached end of input.\n", endchar);
+    Swig_error(cparse_file, start_line, "Missing '%c'. Reached end of input.\n", endchar);
     return;
   }
 
@@ -119,6 +183,16 @@ void skip_balanced(int startchar, int endchar) {
   return;
 }
 
+/* -----------------------------------------------------------------------------
+ * get_raw_text_balanced()
+ *
+ * Returns raw text between 2 braces
+ * ----------------------------------------------------------------------------- */
+
+String *get_raw_text_balanced(int startchar, int endchar) {
+  return Scanner_get_raw_text_balanced(scan, startchar, endchar);
+}
+
 /* ----------------------------------------------------------------------------
  * void skip_decl(void)
  *
@@ -127,7 +201,7 @@ void skip_balanced(int startchar, int endchar) {
  *  friend ostream& operator<<(ostream&, const char *s);
  *
  * or
- *  friend ostream& operator<<(ostream&, const char *s) { };
+ *  friend ostream& operator<<(ostream&, const char *s) { }
  *
  * ------------------------------------------------------------------------- */
 
@@ -247,6 +321,8 @@ static int yylook(void) {
       return GREATERTHANOREQUALTO;
     case SWIG_TOKEN_RSHIFT:
       return RSHIFT;
+    case SWIG_TOKEN_ARROW:
+      return ARROW;
     case SWIG_TOKEN_PERIOD:
       return PERIOD;
     case SWIG_TOKEN_MODULO:
@@ -284,15 +360,25 @@ static int yylook(void) {
     case SWIG_TOKEN_STRING:
       yylval.id = Swig_copy_string(Char(Scanner_text(scan)));
       return STRING;
+
+    case SWIG_TOKEN_WSTRING:
+      yylval.id = Swig_copy_string(Char(Scanner_text(scan)));
+      return WSTRING;
       
     case SWIG_TOKEN_CHAR:
       yylval.str = NewString(Scanner_text(scan));
       if (Len(yylval.str) == 0) {
 	Swig_error(cparse_file, cparse_line, "Empty character constant\n");
-	Printf(stdout,"%d\n", Len(Scanner_text(scan)));
       }
       return CHARCONST;
-      
+
+    case SWIG_TOKEN_WCHAR:
+      yylval.str = NewString(Scanner_text(scan));
+      if (Len(yylval.str) == 0) {
+	Swig_error(cparse_file, cparse_line, "Empty character constant\n");
+      }
+      return WCHARCONST;
+
       /* Numbers */
       
     case SWIG_TOKEN_INT:
@@ -332,10 +418,93 @@ static int yylook(void) {
       
     case SWIG_TOKEN_COMMENT:
       {
-	String *cmt = Scanner_text(scan);
-	char *loc = Char(cmt);
-	if ((strncmp(loc,"/*@SWIG",7) == 0) && (loc[Len(cmt)-3] == '@')) {
-	  Scanner_locator(scan, cmt);
+	typedef enum {
+	  DOX_COMMENT_PRE = -1,
+	  DOX_COMMENT_NONE,
+	  DOX_COMMENT_POST
+	} comment_kind_t;
+	comment_kind_t existing_comment = DOX_COMMENT_NONE;
+
+	/* Concatenate or skip all consecutive comments at once. */
+	do {
+	  String *cmt = Scanner_text(scan);
+	  String *cmt_modified = 0;
+	  char *loc = Char(cmt);
+	  if ((strncmp(loc, "/*@SWIG", 7) == 0) && (loc[Len(cmt)-3] == '@')) {
+	    Scanner_locator(scan, cmt);
+	  }
+	  if (scan_doxygen_comments) { /* else just skip this node, to avoid crashes in parser module*/
+
+	    int slashStyle = 0; /* Flag for "///" style doxygen comments */
+	    if (strncmp(loc, "///", 3) == 0) {
+	      slashStyle = 1;
+	      if (Len(cmt) == 3) {
+		/* Modify to make length=4 to ensure that the empty comment does
+		   get processed to preserve the newlines in the original comments. */
+		cmt_modified = NewStringf("%s ", cmt);
+		cmt = cmt_modified;
+		loc = Char(cmt);
+	      }
+	    }
+	    
+	    /* Check for all possible Doxygen comment start markers while ignoring
+	       comments starting with a row of asterisks or slashes just as
+	       Doxygen itself does.  Also skip empty comment (slash-star-star-slash), 
+	       which causes a crash due to begin > end. */
+	    if (Len(cmt) > 3 && loc[0] == '/' &&
+		((loc[1] == '/' && ((loc[2] == '/' && loc[3] != '/') || loc[2] == '!')) ||
+		 (loc[1] == '*' && ((loc[2] == '*' && loc[3] != '*' && loc[3] != '/') || loc[2] == '!')))) {
+	      comment_kind_t this_comment = loc[3] == '<' ? DOX_COMMENT_POST : DOX_COMMENT_PRE;
+	      if (existing_comment != DOX_COMMENT_NONE && this_comment != existing_comment) {
+		/* We can't concatenate together Doxygen pre- and post-comments. */
+		break;
+	      }
+
+	      if (this_comment == DOX_COMMENT_POST || !isStructuralDoxygen(loc)) {
+		String *str;
+
+		int begin = this_comment == DOX_COMMENT_POST ? 4 : 3;
+		int end = Len(cmt);
+		if (loc[end - 1] == '/' && loc[end - 2] == '*') {
+		  end -= 2;
+		}
+
+		str = NewStringWithSize(loc + begin, end - begin);
+
+		if (existing_comment == DOX_COMMENT_NONE) {
+		  yylval.str = str;
+		  Setline(yylval.str, Scanner_start_line(scan));
+		  Setfile(yylval.str, Scanner_file(scan));
+		} else {
+		  if (slashStyle) {
+		    /* Add a newline to the end of each doxygen "///" comment,
+		       since they are processed individually, unlike the
+		       slash-star style, which gets processed as a block with
+		       newlines included. */
+		    Append(yylval.str, "\n");
+		  }
+		  Append(yylval.str, str);
+		}
+
+		existing_comment = this_comment;
+	      }
+	    }
+	  }
+	  do {
+	    tok = Scanner_token(scan);
+	  } while (tok == SWIG_TOKEN_ENDLINE);
+	  Delete(cmt_modified);
+	} while (tok == SWIG_TOKEN_COMMENT);
+
+	Scanner_pushtoken(scan, tok, Scanner_text(scan));
+
+	switch (existing_comment) {
+	  case DOX_COMMENT_PRE:
+	    return DOXYGENSTRING;
+	  case DOX_COMMENT_NONE:
+	    break;
+	  case DOX_COMMENT_POST:
+	    return DOXYGENPOSTSTRING;
 	}
       }
       break;
@@ -372,7 +541,7 @@ void scanner_clear_rename() {
   rename_active = 0;
 }
 
-/* Used to push a ficticious token into the scanner */
+/* Used to push a fictitious token into the scanner */
 static int next_token = 0;
 void scanner_next_token(int tok) {
   next_token = tok;
@@ -543,8 +712,16 @@ int yylex(void) {
 	  return (PROTECTED);
 	if (strcmp(yytext, "friend") == 0)
 	  return (FRIEND);
+	if (strcmp(yytext, "constexpr") == 0)
+	  return (CONSTEXPR);
+	if (strcmp(yytext, "thread_local") == 0)
+	  return (THREAD_LOCAL);
+	if (strcmp(yytext, "decltype") == 0)
+	  return (DECLTYPE);
 	if (strcmp(yytext, "virtual") == 0)
 	  return (VIRTUAL);
+	if (strcmp(yytext, "static_assert") == 0)
+	  return (STATIC_ASSERT);
 	if (strcmp(yytext, "operator") == 0) {
 	  int nexttok;
 	  String *s = NewString("operator ");
@@ -567,7 +744,10 @@ int yylex(void) {
  
 	  */
 
-	  nexttok = Scanner_token(scan);
+	  do {
+	    nexttok = Scanner_token(scan);
+	  } while (nexttok == SWIG_TOKEN_ENDLINE || nexttok == SWIG_TOKEN_COMMENT);
+
 	  if (Scanner_isoperator(nexttok)) {
 	    /* One of the standard C/C++ symbolic operators */
 	    Append(s,Scanner_text(scan));
@@ -593,6 +773,11 @@ int yylex(void) {
 	      yylval.str = s;
 	      return OPERATOR;
 	    }
+	  } else if (nexttok == SWIG_TOKEN_STRING) {
+	    /* Operator "" or user-defined string literal ""_suffix */
+	    Append(s,"\"\"");
+	    yylval.str = s;
+	    return OPERATOR;
 	  } else if (nexttok == SWIG_TOKEN_ID) {
 	    /* We have an identifier.  This could be any number of things. It could be a named version of
                an operator (e.g., 'and_eq') or it could be a conversion operator.   To deal with this, we're
@@ -633,6 +818,8 @@ int yylex(void) {
 		  Append(s," ");
 		}
 		Append(s,Scanner_text(scan));
+	      } else if (nexttok == SWIG_TOKEN_ENDLINE) {
+	      } else if (nexttok == SWIG_TOKEN_COMMENT) {
 	      } else {
 		Append(s,Scanner_text(scan));
 		needspace = 0;
@@ -669,7 +856,7 @@ int yylex(void) {
 		Setfile(cs,cparse_file);
 		Scanner_push(scan,cs);
 		Delete(cs);
-		return COPERATOR;
+		return CONVERSIONOPERATOR;
 	      }
 	    }
 	    if (termtoken)
@@ -679,6 +866,8 @@ int yylex(void) {
 	}
 	if (strcmp(yytext, "throw") == 0)
 	  return (THROW);
+	if (strcmp(yytext, "noexcept") == 0)
+	  return (NOEXCEPT);
 	if (strcmp(yytext, "try") == 0)
 	  return (yylex());
 	if (strcmp(yytext, "catch") == 0)
@@ -689,6 +878,8 @@ int yylex(void) {
 	  return (yylex());
 	if (strcmp(yytext, "explicit") == 0)
 	  return (EXPLICIT);
+	if (strcmp(yytext, "auto") == 0)
+	  return (AUTO);
 	if (strcmp(yytext, "export") == 0)
 	  return (yylex());
 	if (strcmp(yytext, "typename") == 0)
@@ -697,14 +888,21 @@ int yylex(void) {
 	  yylval.intvalue = cparse_line;
 	  return (TEMPLATE);
 	}
-	if (strcmp(yytext, "delete") == 0) {
+	if (strcmp(yytext, "delete") == 0)
 	  return (DELETE_KW);
-	}
-	if (strcmp(yytext, "using") == 0) {
+	if (strcmp(yytext, "default") == 0)
+	  return (DEFAULT);
+	if (strcmp(yytext, "using") == 0)
 	  return (USING);
-	}
-	if (strcmp(yytext, "namespace") == 0) {
+	if (strcmp(yytext, "namespace") == 0)
 	  return (NAMESPACE);
+	if (strcmp(yytext, "override") == 0) {
+	  last_id = 1;
+	  return (OVERRIDE);
+	}
+	if (strcmp(yytext, "final") == 0) {
+	  last_id = 1;
+	  return (FINAL);
 	}
       } else {
 	if (strcmp(yytext, "class") == 0) {
@@ -749,8 +947,11 @@ int yylex(void) {
       if (strcmp(yytext, "inline") == 0)
 	return (yylex());
 
-      /* SWIG directives */
     } else {
+      Delete(cparse_unknown_directive);
+      cparse_unknown_directive = NULL;
+
+      /* SWIG directives */
       if (strcmp(yytext, "%module") == 0)
 	return (MODULE);
       if (strcmp(yytext, "%insert") == 0)
@@ -826,6 +1027,9 @@ int yylex(void) {
       }
       if (strcmp(yytext, "%warn") == 0)
 	return (WARN);
+
+      /* Note down the apparently unknown directive for error reporting. */
+      cparse_unknown_directive = NewString(yytext);
     }
     /* Have an unknown identifier, as a last step, we'll do a typedef lookup on it. */
 
@@ -840,6 +1044,8 @@ int yylex(void) {
     last_id = 1;
     return (ID);
   case POUND:
+    return yylex();
+  case SWIG_TOKEN_COMMENT:
     return yylex();
   default:
     return (l);

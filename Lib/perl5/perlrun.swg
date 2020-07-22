@@ -20,6 +20,8 @@
 #define SWIG_ConvertPtr(obj, pp, type, flags)           SWIG_Perl_ConvertPtr(SWIG_PERL_OBJECT_CALL obj, pp, type, flags)
 #define SWIG_ConvertPtrAndOwn(obj, pp, type, flags,own) SWIG_Perl_ConvertPtrAndOwn(SWIG_PERL_OBJECT_CALL obj, pp, type, flags, own)
 #define SWIG_NewPointerObj(p, type, flags)              SWIG_Perl_NewPointerObj(SWIG_PERL_OBJECT_CALL p, type, flags)
+#define SWIG_AcquirePtr(ptr, src)                       SWIG_Perl_AcquirePtr(ptr, src)
+#define swig_owntype                                    int
 
 /* for raw packed data */
 #define SWIG_ConvertPacked(obj, p, s, type)             SWIG_Perl_ConvertPacked(SWIG_PERL_OBJECT_CALL obj, p, s, type)
@@ -40,7 +42,7 @@
 
 /* Runtime API */
 
-#define SWIG_GetModule(clientdata)                      SWIG_Perl_GetModule()
+#define SWIG_GetModule(clientdata)                      SWIG_Perl_GetModule(clientdata)
 #define SWIG_SetModule(clientdata, pointer)             SWIG_Perl_SetModule(pointer)
 
 
@@ -143,9 +145,9 @@ typedef int (*SwigMagicFunc)(struct interpreter *, SV *, MAGIC *);
 
 #  ifdef PERL_OBJECT
 #    define SWIG_croak_null() SWIG_Perl_croak_null(pPerl)
-static void SWIG_Perl_croak_null(CPerlObj *pPerl)
+static void SWIGUNUSED SWIG_Perl_croak_null(CPerlObj *pPerl)
 #  else
-static void SWIG_croak_null()
+static void SWIGUNUSED SWIG_croak_null()
 #  endif
 {
   SV *err = get_sv("@", GV_ADD);
@@ -228,6 +230,14 @@ SWIG_TypeProxyCheck(const char *c, swig_type_info *ty) {
   return 0;
 }
 
+/* Acquire a pointer value */
+
+SWIGRUNTIME int
+SWIG_Perl_AcquirePtr(SWIG_MAYBE_PERL_OBJECT SV *sv, int own) {
+  /* TODO */
+  return 0;
+}
+
 /* Function for getting a pointer value */
 
 SWIGRUNTIME int
@@ -267,7 +277,7 @@ SWIG_Perl_ConvertPtrAndOwn(SWIG_MAYBE_PERL_OBJECT SV *sv, void **ptr, swig_type_
     voidptr = INT2PTR(void *,tmp);
   } else if (! SvOK(sv)) {            /* Check for undef */
     *(ptr) = (void *) 0;
-    return SWIG_OK;
+    return (flags & SWIG_POINTER_NO_NULL) ? SWIG_NullReferenceError : SWIG_OK;
   } else if (SvTYPE(sv) == SVt_RV) {  /* Check for NULL pointer */
     if (!SvROK(sv)) {
       /* In Perl 5.12 and later, SVt_RV == SVt_IV, so sv could be a valid integer value.  */
@@ -288,7 +298,11 @@ SWIG_Perl_ConvertPtrAndOwn(SWIG_MAYBE_PERL_OBJECT SV *sv, void **ptr, swig_type_
     /* Now see if the types match */
     char *_c = HvNAME(SvSTASH(SvRV(sv)));
     tc = SWIG_TypeProxyCheck(_c,_t);
+#ifdef SWIG_DIRECTORS
+    if (!tc && !sv_derived_from(sv,SWIG_Perl_TypeProxyName(_t))) {
+#else
     if (!tc) {
+#endif
       return SWIG_ERROR;
     }
     {
@@ -387,7 +401,7 @@ SWIG_Perl_NewPackedObj(SWIG_MAYBE_PERL_OBJECT void *ptr, int sz, swig_type_info 
   return result;
 }
 
-/* Convert a packed value value */
+/* Convert a packed pointer value */
 SWIGRUNTIME int
 SWIG_Perl_ConvertPacked(SWIG_MAYBE_PERL_OBJECT SV *obj, void *ptr, int sz, swig_type_info *ty) {
   swig_cast_info *tc;
@@ -477,7 +491,7 @@ SWIGRUNTIME void _swig_create_magic(CPerlObj *pPerl, SV *sv, const char *name, i
 
 
 SWIGRUNTIME swig_module_info *
-SWIG_Perl_GetModule(void) {
+SWIG_Perl_GetModule(void *SWIGUNUSEDPARM(clientdata)) {
   static void *type_pointer = (void *)0;
   SV *pointer;
 

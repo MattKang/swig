@@ -1,7 +1,3 @@
-#define SWIG_Error(code, msg) Rf_warning(msg); return Rf_ScalarLogical(NA_LOGICAL)
-
-#define SWIG_fail return Rf_ScalarLogical(NA_LOGICAL)
-
 /* for raw pointers */
 #define SWIG_ConvertPtr(oc, ptr, ty, flags)             SWIG_R_ConvertPtr(oc, ptr, ty, flags)
 #define SWIG_ConvertFunctionPtr(oc, ptr, ty)            SWIG_R_ConvertPtr(oc, ptr, ty, 0)
@@ -44,21 +40,27 @@ SWIG_AsVal_dec(long)(SEXP obj, long *val)
 }
 
 
-%fragment(SWIG_From_frag(long long),"header") {
+%fragment(SWIG_From_frag(long long),"header",
+	  fragment="SWIG_LongLongAvailable") {
+%#ifdef SWIG_LONG_LONG_AVAILABLE
 SWIGINTERNINLINE SEXP
 SWIG_From_dec(long long)(long long value)
 {
 	return Rf_ScalarInteger((int)value);
 }
+%#endif
 }
 
-%fragment(SWIG_AsVal_frag(long long),"header") {
+%fragment(SWIG_AsVal_frag(long long),"header",
+	  fragment="SWIG_LongLongAvailable") {
+%#ifdef SWIG_LONG_LONG_AVAILABLE
 SWIGINTERNINLINE  int
 SWIG_AsVal_dec(long long)(SEXP obj, long long *val)
 {
    if (val) *val = Rf_asInteger(obj);
    return SWIG_OK;
 }
+%#endif
 }
 
 %fragment(SWIG_From_frag(unsigned long),"header") {
@@ -80,22 +82,28 @@ SWIG_AsVal_dec(unsigned long)(SEXP obj, unsigned long *val)
 }
 
 
-%fragment(SWIG_From_frag(unsigned long long),"header") {
+%fragment(SWIG_From_frag(unsigned long long),"header",
+	  fragment="SWIG_LongLongAvailable") {
+%#ifdef SWIG_LONG_LONG_AVAILABLE
 SWIGINTERNINLINE SEXP
 SWIG_From_dec(unsigned long long)(unsigned long long value)
 {
 	return Rf_ScalarInteger((int)value);
 }
+%#endif
 }
 
 
-%fragment(SWIG_AsVal_frag(unsigned long long),"header") {
+%fragment(SWIG_AsVal_frag(unsigned long long),"header",
+	  fragment="SWIG_LongLongAvailable") {
+%#ifdef SWIG_LONG_LONG_AVAILABLE
 SWIGINTERNINLINE  int
 SWIG_AsVal_dec(unsigned long long)(SEXP obj, unsigned long long *val)
 {
    if (val) *val = Rf_asInteger(obj);
    return SWIG_OK;
 }
+%#endif
 }
 
 %fragment(SWIG_From_frag(double),"header") {
@@ -153,7 +161,7 @@ SWIG_strdup(const char *str)
 }
 }
 
-# This is modified from the R header files
+//# This is modified from the R header files
 
 %fragment("SWIG_FromCharPtrAndSize","header") 
 {

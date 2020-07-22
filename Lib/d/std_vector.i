@@ -24,7 +24,7 @@
 %define SWIG_STD_VECTOR_MINIMUM_INTERNAL(CONST_REFERENCE, CTYPE...)
 #if (SWIG_D_VERSION == 1)
 %typemap(dimports) std::vector< CTYPE > "static import tango.core.Exception;"
-%typemap(dcode) std::vector< CTYPE > %{
+%proxycode %{
 public this($typemap(dtype, CTYPE)[] values) {
   this();
   append(values);
@@ -104,15 +104,22 @@ public void capacity(size_t value) {
 
   public:
     typedef size_t size_type;
+    typedef ptrdiff_t difference_type;
     typedef CTYPE value_type;
+    typedef value_type* pointer;
+    typedef const value_type* const_pointer;
+    typedef value_type& reference;
     typedef CONST_REFERENCE const_reference;
+
     void clear();
     void push_back(CTYPE const& x);
     size_type size() const;
     size_type capacity() const;
     void reserve(size_type n) throw (std::length_error);
+
     vector();
     vector(const vector &other);
+
     %extend {
       vector(size_type capacity) throw (std::length_error) {
         std::vector< CTYPE >* pv = 0;
@@ -185,7 +192,7 @@ static import std.exception;
 static import std.range;
 static import std.traits;
 %}
-%typemap(dcode) std::vector< CTYPE > %{
+%proxycode %{
 alias size_t KeyType;
 alias $typemap(dtype, CTYPE) ValueType;
 
@@ -442,8 +449,13 @@ int opApply(int delegate(ref size_t index, ref $typemap(dtype, CTYPE) value) dg)
 
   public:
     typedef size_t size_type;
+    typedef ptrdiff_t difference_type;
     typedef CTYPE value_type;
+    typedef value_type* pointer;
+    typedef const value_type* const_pointer;
+    typedef value_type& reference;
     typedef CONST_REFERENCE const_reference;
+
     bool empty() const;
     void clear();
     void push_back(CTYPE const& x);
@@ -451,8 +463,10 @@ int opApply(int delegate(ref size_t index, ref $typemap(dtype, CTYPE) value) dg)
     size_type size() const;
     size_type capacity() const;
     void reserve(size_type n) throw (std::length_error);
+
     vector();
     vector(const vector &other);
+
     %extend {
       vector(size_type capacity) throw (std::length_error) {
         std::vector< CTYPE >* pv = 0;
@@ -544,7 +558,7 @@ int opApply(int delegate(ref size_t index, ref $typemap(dtype, CTYPE) value) dg)
 %define SWIG_STD_VECTOR_ENHANCED(CTYPE...)
 namespace std {
   template<> class vector<CTYPE > {
-    SWIG_STD_VECTOR_MINIMUM_INTERNAL(%arg(CTYPE const&), %arg(CTYPE))
+    SWIG_STD_VECTOR_MINIMUM_INTERNAL(const value_type&, %arg(CTYPE))
     SWIG_STD_VECTOR_EXTRA_OP_EQUALS_EQUALS(CTYPE)
   };
 }
@@ -559,11 +573,11 @@ namespace std {
   // primary (unspecialized) class template for std::vector
   // does not require operator== to be defined
   template<class T> class vector {
-    SWIG_STD_VECTOR_MINIMUM_INTERNAL(T const&, T)
+    SWIG_STD_VECTOR_MINIMUM_INTERNAL(const value_type&, T)
   };
   // specializations for pointers
   template<class T> class vector<T *> {
-    SWIG_STD_VECTOR_MINIMUM_INTERNAL(T *const&, T *)
+    SWIG_STD_VECTOR_MINIMUM_INTERNAL(const value_type&, T *)
     SWIG_STD_VECTOR_EXTRA_OP_EQUALS_EQUALS(T *)
   };
   // bool is a bit different in the C++ standard - const_reference in particular

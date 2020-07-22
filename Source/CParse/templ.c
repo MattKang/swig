@@ -11,8 +11,6 @@
  * Expands a template into a specialized version.   
  * ----------------------------------------------------------------------------- */
 
-char cvsroot_templ_c[] = "$Id$";
-
 #include "swig.h"
 #include "cparse.h"
 
@@ -28,12 +26,19 @@ void SwigType_template_init() {
 }
 
 
-static void add_parms(ParmList *p, List *patchlist, List *typelist) {
+static void add_parms(ParmList *p, List *patchlist, List *typelist, int is_pattern) {
   while (p) {
     SwigType *ty = Getattr(p, "type");
     SwigType *val = Getattr(p, "value");
     Append(typelist, ty);
     Append(typelist, val);
+    if (is_pattern) {
+      /* Typemap patterns are not simple parameter lists.
+       * Output style ("out", "ret" etc) typemap names can be
+       * qualified names and so may need template expansion */
+      SwigType *name = Getattr(p, "name");
+      Append(typelist, name);
+    }
     Append(patchlist, val);
     p = nextSibling(p);
   }
@@ -51,32 +56,31 @@ void Swig_cparse_debug_templates(int x) {
  * template parameters
  * ----------------------------------------------------------------------------- */
 
-static int cparse_template_expand(Node *n, String *tname, String *rname, String *templateargs, List *patchlist, List *typelist, List *cpatchlist) {
+static void cparse_template_expand(Node *templnode, Node *n, String *tname, String *rname, String *templateargs, List *patchlist, List *typelist, List *cpatchlist) {
   static int expanded = 0;
-  int ret;
   String *nodeType;
   if (!n)
-    return 0;
+    return;
   nodeType = nodeType(n);
   if (Getattr(n, "error"))
-    return 0;
+    return;
 
   if (Equal(nodeType, "template")) {
     /* Change the node type back to normal */
     if (!expanded) {
       expanded = 1;
       set_nodeType(n, Getattr(n, "templatetype"));
-      ret = cparse_template_expand(n, tname, rname, templateargs, patchlist, typelist, cpatchlist);
+      cparse_template_expand(templnode, n, tname, rname, templateargs, patchlist, typelist, cpatchlist);
       expanded = 0;
-      return ret;
+      return;
     } else {
       /* Called when template appears inside another template */
       /* Member templates */
 
       set_nodeType(n, Getattr(n, "templatetype"));
-      ret = cparse_template_expand(n, tname, rname, templateargs, patchlist, typelist, cpatchlist);
+      cparse_template_expand(templnode, n, tname, rname, templateargs, patchlist, typelist, cpatchlist);
       set_nodeType(n, "template");
-      return ret;
+      return;
     }
   } else if (Equal(nodeType, "cdecl")) {
     /* A simple C declaration */
@@ -99,9 +103,18 @@ static int cparse_template_expand(Node *n, String *tname, String *rname, String 
 	Append(cpatchlist, Getattr(n, "sym:name"));
       }
     }
+    if (checkAttribute(n, "storage", "friend")) {
+      String *symname = Getattr(n, "sym:name");
+      if (symname) {
+	String *stripped_name = SwigType_templateprefix(symname);
+	Setattr(n, "sym:name", stripped_name);
+	Delete(stripped_name);
+      }
+      Append(typelist, Getattr(n, "name"));
+    }
 
-    add_parms(Getattr(n, "parms"), cpatchlist, typelist);
-    add_parms(Getattr(n, "throws"), cpatchlist, typelist);
+    add_parms(Getattr(n, "parms"), cpatchlist, typelist, 0);
+    add_parms(Getattr(n, "throws"), cpatchlist, typelist, 0);
 
   } else if (Equal(nodeType, "class")) {
     /* Patch base classes */
@@ -124,7 +137,7 @@ static int cparse_template_expand(Node *n, String *tname, String *rname, String 
     {
       Node *cn = firstChild(n);
       while (cn) {
-	cparse_template_expand(cn, tname, rname, templateargs, patchlist, typelist, cpatchlist);
+	cparse_template_expand(templnode, cn, tname, rname, templateargs, patchlist, typelist, cpatchlist);
 	cn = nextSibling(cn);
       }
     }
@@ -167,28 +180,33 @@ static int cparse_template_expand(Node *n, String *tname, String *rname, String 
     }
     Append(cpatchlist, Getattr(n, "code"));
     Append(typelist, Getattr(n, "decl"));
-    add_parms(Getattr(n, "parms"), cpatchlist, typelist);
-    add_parms(Getattr(n, "throws"), cpatchlist, typelist);
+    add_parms(Getattr(n, "parms"), cpatchlist, typelist, 0);
+    add_parms(Getattr(n, "throws"), cpatchlist, typelist, 0);
   } else if (Equal(nodeType, "destructor")) {
-    String *name = Getattr(n, "name");
-    if (name) {
-      if (strchr(Char(name), '<'))
-        Append(patchlist, Getattr(n, "name"));
-      else
-        Append(name, templateargs);
-    }
-    name = Getattr(n, "sym:name");
-    if (name) {
-      if (strchr(Char(name), '<')) {
-        String *sn = Copy(tname);
-        Setattr(n, "sym:name", sn);
-        Delete(sn);
-      } else {
-        Replace(name, tname, rname, DOH_REPLACE_ANY);
+    /* We only need to patch the dtor of the template itself, not the destructors of any nested classes, so check that the parent of this node is the root
+     * template node, with the special exception for %extend which adds its methods under an intermediate node. */
+    Node* parent = parentNode(n);
+    if (parent == templnode || (parentNode(parent) == templnode && Equal(nodeType(parent), "extend"))) {
+      String *name = Getattr(n, "name");
+      if (name) {
+	if (strchr(Char(name), '<'))
+	  Append(patchlist, Getattr(n, "name"));
+	else
+	  Append(name, templateargs);
       }
+      name = Getattr(n, "sym:name");
+      if (name) {
+	if (strchr(Char(name), '<')) {
+	  String *sn = Copy(tname);
+	  Setattr(n, "sym:name", sn);
+	  Delete(sn);
+	} else {
+	  Replace(name, tname, rname, DOH_REPLACE_ANY);
+	}
+      }
+      /* Setattr(n,"sym:name",name); */
+      Append(cpatchlist, Getattr(n, "code"));
     }
-    /* Setattr(n,"sym:name",name); */
-    Append(cpatchlist, Getattr(n, "code"));
   } else if (Equal(nodeType, "using")) {
     String *uname = Getattr(n, "uname");
     if (uname && strchr(Char(uname), '<')) {
@@ -204,17 +222,16 @@ static int cparse_template_expand(Node *n, String *tname, String *rname, String 
     Append(cpatchlist, Getattr(n, "code"));
     Append(typelist, Getattr(n, "type"));
     Append(typelist, Getattr(n, "decl"));
-    add_parms(Getattr(n, "parms"), cpatchlist, typelist);
-    add_parms(Getattr(n, "kwargs"), cpatchlist, typelist);
-    add_parms(Getattr(n, "pattern"), cpatchlist, typelist);
-    add_parms(Getattr(n, "throws"), cpatchlist, typelist);
+    add_parms(Getattr(n, "parms"), cpatchlist, typelist, 0);
+    add_parms(Getattr(n, "kwargs"), cpatchlist, typelist, 0);
+    add_parms(Getattr(n, "pattern"), cpatchlist, typelist, 1);
+    add_parms(Getattr(n, "throws"), cpatchlist, typelist, 0);
     cn = firstChild(n);
     while (cn) {
-      cparse_template_expand(cn, tname, rname, templateargs, patchlist, typelist, cpatchlist);
+      cparse_template_expand(templnode, cn, tname, rname, templateargs, patchlist, typelist, cpatchlist);
       cn = nextSibling(cn);
     }
   }
-  return 0;
 }
 
 static
@@ -230,7 +247,7 @@ String *partial_arg(String *s, String *p) {
   if (!c) {
     return Copy(s);
   }
-  prefix = NewStringWithSize(cp, c - cp);
+  prefix = NewStringWithSize(cp, (int)(c - cp));
   newarg = Copy(s);
   Replace(newarg, prefix, "", DOH_REPLACE_ANY | DOH_REPLACE_FIRST);
   Delete(prefix);
@@ -299,7 +316,7 @@ int Swig_cparse_template_expand(Node *n, String *rname, ParmList *tparms, Symtab
   /*  Printf(stdout,"targs = '%s'\n", templateargs);
      Printf(stdout,"rname = '%s'\n", rname);
      Printf(stdout,"tname = '%s'\n", tname);  */
-  cparse_template_expand(n, tname, rname, templateargs, patchlist, typelist, cpatchlist);
+  cparse_template_expand(n, n, tname, rname, templateargs, patchlist, typelist, cpatchlist);
 
   /* Set the name */
   {
@@ -319,14 +336,13 @@ int Swig_cparse_template_expand(Node *n, String *rname, ParmList *tparms, Symtab
     if (tp) {
       Symtab *tsdecl = Getattr(n, "sym:symtab");
       while (p && tp) {
-	String *name, *value, *valuestr, *tydef, *tmp, *tmpr;
+	String *name, *value, *valuestr, *tmp, *tmpr;
 	int sz, i;
 	String *dvalue = 0;
 	String *qvalue = 0;
 
 	name = Getattr(tp, "name");
 	value = Getattr(p, "value");
-	tydef = Getattr(p, "typedef");
 
 	if (name) {
 	  if (!value)
@@ -367,9 +383,6 @@ int Swig_cparse_template_expand(Node *n, String *rname, ParmList *tparms, Symtab
 	    /*      Printf(stdout,"'%s'\n", s); */
 	  }
 
-	  if (!tydef) {
-	    tydef = dvalue;
-	  }
 	  tmp = NewStringf("#%s", name);
 	  tmpr = NewStringf("\"%s\"", valuestr);
 
@@ -377,7 +390,6 @@ int Swig_cparse_template_expand(Node *n, String *rname, ParmList *tparms, Symtab
 	  for (i = 0; i < sz; i++) {
 	    String *s = Getitem(cpatchlist, i);
 	    Replace(s, tmp, tmpr, DOH_REPLACE_ID);
-	    /*  Replace(s,name,tydef, DOH_REPLACE_ID); */
 	    Replace(s, name, valuestr, DOH_REPLACE_ID);
 	  }
 	  Delete(tmp);
@@ -766,6 +778,7 @@ static Node *template_locate(String *name, Parm *tparms, Symtab *tscope) {
 	for (i = 1; i < posslen; i++) {
 	  String *templcsymname = Getattr(Getitem(possiblepartials, i), "templcsymname");
 	  Node *ignored_node = Swig_symbol_clookup_local(templcsymname, primary_scope);
+	  assert(ignored_node);
 	  Swig_warning(WARN_PARSE_TEMPLATE_AMBIG, Getfile(ignored_node), Getline(ignored_node), "  instantiation '%s' ignored.\n", SwigType_namestr(Getattr(ignored_node, "name")));
 	}
       }
@@ -831,7 +844,7 @@ Node *Swig_cparse_template_locate(String *name, Parm *tparms, Symtab *tscope) {
       /* If not a templated class we must have a templated function.
          The template found is not necessarily the one we want when dealing with templated
          functions. We don't want any specialized templated functions as they won't have
-         the default parameters. Lets look for the unspecialized template. Also make sure
+         the default parameters. Let's look for the unspecialized template. Also make sure
          the number of template parameters is correct as it is possible to overload a
          templated function with different numbers of template parameters. */
 

@@ -69,7 +69,7 @@
 	  *i = swig::as< Type >( r );
 	}
     }
-    catch ( const std::invalid_argument& )
+    catch (const std::invalid_argument&)
       {
 	rb_raise(rb_eTypeError,
 		 "Yield block did not return a valid element for " "Container");
@@ -123,7 +123,6 @@
 %swig_container_extend( %arg( Container ), double );
 %swig_container_extend( %arg( Container ), std::complex );
 %swig_container_extend( %arg( Container ), std::string );
-%swig_container_extend( %arg( Container ), swig::GC_VALUE );
 %swig_container_extend( %arg( Container ), swig::GC_VALUE );
 
 %enddef

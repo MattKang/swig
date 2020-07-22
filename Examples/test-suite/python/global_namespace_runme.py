@@ -1,5 +1,6 @@
 from global_namespace import *
 
+
 k1 = Klass1()
 k2 = Klass2()
 k3 = Klass3()

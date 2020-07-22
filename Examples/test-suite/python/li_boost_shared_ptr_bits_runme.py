@@ -1,17 +1,18 @@
 from li_boost_shared_ptr_bits import *
 
+
 def check(nd):
-  nd.i = 200
-  i = nd.i
+    nd.i = 200
+    i = nd.i
 
-  try:
-    nd.notexist = 100
-    passed = 0
-  except:
-    passed = 1
+    try:
+        nd.notexist = 100
+        passed = 0
+    except:
+        passed = 1
 
-  if not passed:
-    raise "Test failed"
+    if not passed:
+        raise "Test failed"
 
 nd = NonDynamic()
 check(nd)
@@ -27,8 +28,7 @@ v.push_back(IntHolder(33))
 
 sum = sum(v)
 if sum != 66:
-  raise "sum is wrong"
+    raise "sum is wrong"
 
 ################################
 p = HiddenDestructor.create()
-

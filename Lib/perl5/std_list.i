@@ -36,9 +36,9 @@
 
 %{
 #include <list>
-#include <algorithm>
-#include <stdexcept>
 %}
+%fragment("<algorithm>");
+%fragment("<stdexcept>");
 
 // exported class
 
@@ -106,7 +106,7 @@ namespace std {
             }
         }
         %typemap(out) list<T> {
-	    std::list<T>::const_iterator i;
+	    std::list< T >::const_iterator i;
             unsigned int j;
             int len = $1.size();
             SV **svs = new SV*[len];
@@ -125,7 +125,7 @@ namespace std {
         %typecheck(SWIG_TYPECHECK_LIST) list<T> {
             {
                 /* wrapped list? */
-                std::list<T >* v;
+                std::list< T >* v;
                 if (SWIG_ConvertPtr($input,(void **) &v, 
                                     $1_&descriptor,0) != -1) {
                     $1 = 1;
@@ -158,7 +158,7 @@ namespace std {
                                           const list<T>* {
             {
                 /* wrapped list? */
-                std::list<T >* v;
+                std::list< T >* v;
                 if (SWIG_ConvertPtr($input,(void **) &v, 
                                     $1_descriptor,0) != -1) {
                     $1 = 1;
@@ -188,8 +188,16 @@ namespace std {
             }
         }
       public:
+        typedef size_t size_type;
+        typedef ptrdiff_t difference_type;
+        typedef T value_type;
+        typedef value_type* pointer;
+        typedef const value_type* const_pointer;
+        typedef value_type& reference;
+        typedef const value_type& const_reference;
+
         list();
-        list(const list<T> &);
+        list(const list& other);
 
         unsigned int size() const;
         bool empty() const;
@@ -261,7 +269,7 @@ namespace std {
             }
         }
         %typemap(out) list<T> {
-	    std::list<T>::const_iterator i;
+	    std::list< T >::const_iterator i;
             unsigned int j;
             int len = $1.size();
             SV **svs = new SV*[len];
@@ -278,7 +286,7 @@ namespace std {
         %typecheck(SWIG_TYPECHECK_LIST) list<T> {
             {
                 /* wrapped list? */
-                std::list<T >* v;
+                std::list< T >* v;
                 if (SWIG_ConvertPtr($input,(void **) &v, 
                                     $1_&descriptor,0) != -1) {
                     $1 = 1;
@@ -309,7 +317,7 @@ namespace std {
                                           const list<T>* {
             {
                 /* wrapped list? */
-                std::list<T >* v;
+                std::list< T >* v;
                 if (SWIG_ConvertPtr($input,(void **) &v, 
                                     $1_descriptor,0) != -1) {
                     $1 = 1;
@@ -337,8 +345,12 @@ namespace std {
             }
         }
       public:
+        typedef size_t size_type;
+        typedef T value_type;
+        typedef const value_type& const_reference;
+
         list();
-        list(const list<T> &);
+        list(const list& other);
 
         unsigned int size() const;
         bool empty() const;

@@ -1,6 +1,6 @@
 package main
 
-import dc "./default_constructor"
+import dc "swigtests/default_constructor"
 
 func main() {
 	a := dc.NewA()
@@ -20,9 +20,6 @@ func main() {
 
 	f := dc.NewF()
 	f.Destroy()
-
-	ff := dc.NewFFF()
-	ff.Destroy()
 
 	g := dc.NewG()
 

@@ -13,8 +13,9 @@
  * ----------------------------------------------------------------------------- */
 
 /* Individual parameters */
-extern Parm	 *NewParm(SwigType *type, const_String_or_char_ptr name, Node *file_line_node);
+extern Parm      *NewParm(SwigType *type, const_String_or_char_ptr name, Node *from_node);
 extern Parm      *NewParmWithoutFileLineInfo(SwigType *type, const_String_or_char_ptr name);
+extern Parm      *NewParmNode(SwigType *type, Node *from_node);
 extern Parm      *CopyParm(Parm *p);
 
 /* Parameter lists */
@@ -23,6 +24,7 @@ extern ParmList  *CopyParmListMax(ParmList *, int count);
 extern int        ParmList_len(ParmList *);
 extern int        ParmList_numrequired(ParmList *);
 extern int        ParmList_has_defaultargs(ParmList *p);
+extern int        ParmList_has_varargs(ParmList *p);
 
 /* Output functions */
 extern String    *ParmList_str(ParmList *);

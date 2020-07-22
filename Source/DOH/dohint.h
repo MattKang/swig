@@ -49,7 +49,6 @@ typedef struct {
   int (*doh_ungetc) (DOH *obj, int ch);	/* Unget character */
   int (*doh_seek) (DOH *obj, long offset, int whence);	/* Seek */
   long (*doh_tell) (DOH *obj);	/* Tell */
-  int (*doh_close) (DOH *obj);	/* Close */
 } DohFileMethods;
 
 /* String methods */
@@ -63,7 +62,7 @@ typedef struct {
  * ----------------------------------------------------------------------------- */
 
 typedef struct DohObjInfo {
-  char *objname;		/* Object name        */
+  const char *objname;		/* Object name        */
 
   /* Basic object methods */
   void (*doh_del) (DOH *obj);	/* Delete object      */

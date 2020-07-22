@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"./example"
+
+	"swigtests/example"
 )
 
 func main() {

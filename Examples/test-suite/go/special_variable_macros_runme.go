@@ -1,6 +1,6 @@
 package main
 
-import "./special_variable_macros"
+import "swigtests/special_variable_macros"
 
 func main() {
 	name := special_variable_macros.NewName()
@@ -14,6 +14,9 @@ func main() {
 		panic("test failed")
 	}
 	if special_variable_macros.TestMary(name) != "SWIGTYPE_p_NameWrap" {
+		panic("test failed")
+	}
+	if special_variable_macros.TestJames(name) != "SWIGTYPE_Name" {
 		panic("test failed")
 	}
 	if special_variable_macros.TestJim(name) != "multiname num" {
