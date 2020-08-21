@@ -137,6 +137,11 @@ matrix:
       env: SWIGLANG=mzscheme
       sudo: required
       dist: xenial
+    - compiler: clang
+      os: linux
+      env: SWIGLANG=objc SWIGJOBS=-j2 CPP11=1
+      sudo: required
+      dist: xenial
     - compiler: gcc
       os: linux
       env: SWIGLANG=ocaml
